@@ -47,8 +47,9 @@ class InventoryManager
         $stmt->execute([':blood_type' => $bloodType]);
         $count = (int) $stmt->fetchColumn();
 
-        // 3. Determine low-stock flag (threshold: < 10 units).
-        $lowStock = ($count < 10) ? 1 : 0;
+        // Determine low-stock flag — threshold from .env (default: 10 units)
+        $threshold = (int) ($_ENV['LOW_STOCK_THRESHOLD'] ?? 10);
+        $lowStock  = ($count < $threshold) ? 1 : 0;
 
         // 4. Update blood_inventory for this blood type.
         $stmt = $pdo->prepare(
