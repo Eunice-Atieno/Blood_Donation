@@ -1,0 +1,26 @@
+# --- Credentials & environment config ---
+config/db.php
+config/sms.php
+.env
+.env.*
+!.env.example
+
+# --- OS & editor artifacts ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- PHP / Composer ---
+vendor/
+composer.lock
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Test artifacts ---
+.phpunit.result.cache
+coverage/

@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Lab Technician Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .lab-layout { display:flex; min-height:calc(100vh - 48px); }
+    .lab-sidebar {
+      width:220px; min-width:180px; background:#1a1a2e; color:#e0e0e0;
+      display:flex; flex-direction:column; padding:1rem 0;
+      position:sticky; top:0; height:calc(100vh - 48px); overflow-y:auto;
+    }
+    .lab-sidebar .sidebar-brand {
+      font-size:.78rem; font-weight:700; letter-spacing:.08em; color:#aaa;
+      padding:0 1rem 1rem; border-bottom:1px solid #2e2e4e; margin-bottom:.5rem;
+      text-transform:uppercase;
+    }
+    .lab-tab-btn {
+      background:none; border:none; text-align:left; width:100%;
+      padding:.65rem 1rem; font-size:.88rem; color:#ccc; cursor:pointer;
+      transition:background .15s,color .15s;
+    }
+    .lab-tab-btn:hover { background:#16213e; color:#fff; }
+    .lab-tab-btn.active { background:#28a745; color:#fff; font-weight:700; }
+    .lab-main { flex:1; padding:2rem; overflow-y:auto; }
+    .tab-panel { display:none; } .tab-panel.active { display:block; }
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .stat-card { background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.07);
+      padding:1.25rem; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
+    .stat-value { font-size:1.8rem; font-weight:700; color:#1a1a2e; }
+    .stat-label { font-size:.78rem; color:#888; text-align:center; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .empty-row { text-align:center; color:#888; padding:1.5rem 0; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .modal-overlay[hidden] { display:none; }
+    .modal-box { background:#fff; border-radius:10px; padding:2rem; width:100%;
+      max-width:520px; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+    .modal-box h2 { margin-bottom:1.25rem; }
+    /* Workflow stepper */
+    .workflow-steps { display:flex; gap:0; margin-bottom:2rem; }
+    .wf-step {
+      flex:1; text-align:center; padding:.6rem .4rem; font-size:.78rem; font-weight:600;
+      background:#e9ecef; color:#888; border-right:2px solid #fff; position:relative;
+    }
+    .wf-step:last-child { border-right:none; }
+    .wf-step.done  { background:#28a745; color:#fff; }
+    .wf-step.active { background:#1a1a2e; color:#fff; }
+    .wf-step .step-num {
+      display:block; font-size:1.1rem; font-weight:700; margin-bottom:.15rem;
+    }
+    .wf-panel { display:none; } .wf-panel.active { display:block; }
+    @media(max-width:768px){
+      .lab-layout{flex-direction:column;}
+      .lab-sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:.5rem;}
+      .lab-tab-btn{width:auto;padding:.45rem .75rem;font-size:.8rem;}
+      .lab-main{padding:1rem;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .form-row{grid-template-columns:1fr;}
+      .workflow-steps{flex-direction:column;gap:.3rem;}
+      .wf-step{border-right:none;border-bottom:2px solid #fff;}
+    }
+    @media(max-width:480px){ .stats-row{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">KNH BDMS — Blood Bank</span>
+  <span id="navRole" style="color:#aaa;font-size:.85rem;padding:.75rem .5rem;">Lab Technician</span>
+  <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin:.5rem 1rem .5rem auto;">Sign Out</button>
+</nav>
+
+<div class="lab-layout">
+  <aside class="lab-sidebar">
+    <div class="sidebar-brand">Blood Bank</div>
+    <button class="lab-tab-btn active" data-tab="workflow">🔄 Donation Workflow</button>
+    <button class="lab-tab-btn"        data-tab="overview">📊 Overview</button>
+    <button class="lab-tab-btn"        data-tab="donors">👤 Donor Management</button>
+    <button class="lab-tab-btn"        data-tab="collection">🩸 Blood Collection</button>
+    <button class="lab-tab-btn"        data-tab="labtests">🧪 Lab Testing</button>
+    <button class="lab-tab-btn"        data-tab="inventory">📦 Inventory</button>
+    <button class="lab-tab-btn"        data-tab="appointments">📅 Appointments</button>
+    <button class="lab-tab-btn"        data-tab="mynotifs">🔔 My Notifications</button>
+  </aside>
+
+  <main class="lab-main">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DONATION WORKFLOW — guided 4-step process
+         ══════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-workflow" class="tab-panel active">
+      <h1>Donation Workflow</h1>
+      <p style="color:#555;margin-bottom:1.25rem;">
+        Follow these steps in order to process a donor visit: receive donor information,
+        register or look up the donor, record blood collection, then confirm inventory is updated.
+      </p>
+
+      <!-- Step indicator -->
+      <div class="workflow-steps" id="wfSteps">
+        <div class="wf-step active" data-step="1"><span class="step-num">1</span>Donor Info</div>
+        <div class="wf-step"        data-step="2"><span class="step-num">2</span>Register / Lookup</div>
+        <div class="wf-step"        data-step="3"><span class="step-num">3</span>Blood Collection</div>
+        <div class="wf-step"        data-step="4"><span class="step-num">4</span>Inventory Update</div>
+      </div>
+
+      <!-- ── Step 1: Receive Donor Information ── -->
+      <div id="wf-panel-1" class="wf-panel active">
+        <div class="card">
+          <h2>Step 1 — Receive Donor Information</h2>
+          <p style="color:#555;font-size:.9rem;margin-bottom:1rem;">
+            Enter the donor's details as provided. If the donor is already registered, enter their
+            National ID or email to look them up in Step 2.
+          </p>
+          <div id="wfStep1Alert" class="alert" role="alert"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wfName">Full Name <span style="color:red">*</span></label>
+              <input type="text" id="wfName" placeholder="e.g. Jane Doe" />
+            </div>
+            <div class="form-group">
+              <label for="wfDob">Date of Birth <span style="color:red">*</span></label>
+              <input type="date" id="wfDob" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wfNationalId">National ID <span style="color:red">*</span></label>
+              <input type="text" id="wfNationalId" placeholder="e.g. 12345678" />
+            </div>
+            <div class="form-group">
+              <label for="wfPhone">Phone Number <span style="color:red">*</span></label>
+              <input type="tel" id="wfPhone" placeholder="e.g. 0712345678" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wfEmail">Email</label>
+              <input type="email" id="wfEmail" placeholder="optional" />
+            </div>
+            <div class="form-group">
+              <label for="wfBloodType">Blood Type (if known)</label>
+              <select id="wfBloodType">
+                <option value="">— Unknown —</option>
+                <option>A+</option><option>A-</option>
+                <option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option>
+                <option>O+</option><option>O-</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:.5rem;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="wfStep1Next">Next: Register →</button>
+            <button class="btn btn-secondary" id="wfLookupExisting">Look Up Existing Donor</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 2: Register or Confirm Donor ── -->
+      <div id="wf-panel-2" class="wf-panel">
+        <div class="card">
+          <h2>Step 2 — Register / Confirm Donor in System</h2>
+          <div id="wfStep2Alert" class="alert" role="alert"></div>
+          <div id="wfDonorPreview" style="margin-bottom:1rem;"></div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <button class="btn btn-primary"   id="wfRegisterBtn">Register as New Donor</button>
+            <button class="btn btn-secondary" id="wfStep2Back">← Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 3: Record Blood Collection ── -->
+      <div id="wf-panel-3" class="wf-panel">
+        <div class="card">
+          <h2>Step 3 — Record Blood Collection</h2>
+          <div id="wfStep3Alert" class="alert" role="alert"></div>
+          <div id="wfEligibilityBanner" class="alert" role="status" style="margin-bottom:1rem;"></div>
+          <div class="form-group" style="max-width:300px;">
+            <label>Donor ID (confirmed)</label>
+            <input type="text" id="wfConfirmedDonorId" readonly style="background:#f5f5f5;" />
+          </div>
+          <div class="form-group" style="max-width:300px;">
+            <label for="wfCollectBloodType">Blood Type <span style="color:red">*</span></label>
+            <select id="wfCollectBloodType" required>
+              <option value="">— Select —</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>O+</option><option>O-</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <button class="btn btn-primary"   id="wfRecordCollectionBtn">Record Collection</button>
+            <button class="btn btn-secondary" id="wfStep3Back">← Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 4: Inventory Confirmation ── -->
+      <div id="wf-panel-4" class="wf-panel">
+        <div class="card">
+          <h2>Step 4 — Inventory Updated</h2>
+          <div id="wfStep4Alert" class="alert" role="alert"></div>
+          <div id="wfSummary" style="margin-bottom:1.5rem;"></div>
+          <div class="card" style="background:#f8f9fa;">
+            <h3 style="margin-bottom:.75rem;">Current Inventory Snapshot</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Blood Type</th><th>Available Units</th><th>Status</th></tr></thead>
+                <tbody id="wfInventorySnapshot">
+                  <tr><td colspan="3" class="empty-row">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="wfStartOver" style="margin-top:1rem;">Start New Donation Process</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Overview ──────────────────────────────────────────────────────── -->
+    <section id="tab-overview" class="tab-panel">
+      <h1>Blood Bank Overview</h1>
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="statDonors">—</span>
+          <span class="stat-label">Registered Donors</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statAvailable">—</span>
+          <span class="stat-label">Available Units</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statExpiring">—</span>
+          <span class="stat-label">Expiring in 7 Days</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statLowTypes">—</span>
+          <span class="stat-label">Low Stock Types</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Inventory Status</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Blood Type</th><th>Units</th><th>Status</th></tr></thead>
+            <tbody id="overviewInventory"><tr><td colspan="3" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Units Expiring Within 7 Days</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Unit ID</th><th>Blood Type</th><th>Donor ID</th><th>Expiry Date</th></tr></thead>
+            <tbody id="expiringBody"><tr><td colspan="4" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Donor Management ───────────────────────────────────────────────── -->
+    <section id="tab-donors" class="tab-panel">
+      <h1>Donor Management</h1>
+      <div id="donorsAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <h2>Donor Database</h2>
+        <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;">
+          <input type="text" id="donorSearch" placeholder="Search name or national ID…" style="max-width:300px;" />
+          <button class="btn btn-primary btn-sm" id="donorSearchBtn">Search</button>
+          <button class="btn btn-secondary btn-sm" id="donorClearBtn">Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Blood Type</th><th>Phone</th><th>Last Donation</th><th>Eligibility</th><th>Actions</th></tr></thead>
+            <tbody id="donorsBody"><tr><td colspan="7" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit donor modal -->
+    <div id="editDonorModal" class="modal-overlay" hidden>
+      <div class="modal-box">
+        <h2>Update Donor</h2>
+        <div id="editDonorAlert" class="alert" role="alert"></div>
+        <form id="editDonorForm">
+          <input type="hidden" id="editDonorId" />
+          <div class="form-group"><label for="editDonorLastDonation">Last Donation Date</label><input type="date" id="editDonorLastDonation" /></div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="editDonorMedFlag" />
+            <label for="editDonorMedFlag">Medical history flag</label>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1rem;">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-secondary" id="closeEditDonor">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Blood Collection ───────────────────────────────────────────────── -->
+    <section id="tab-collection" class="tab-panel">
+      <h1>Blood Collection</h1>
+      <div id="collectionAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <h2>Record New Collection</h2>
+        <form id="collectionForm">
+          <div class="form-row">
+            <div class="form-group"><label for="cDonorId">Donor ID</label><input type="number" id="cDonorId" min="1" required placeholder="Enter donor ID" /></div>
+            <div class="form-group">
+              <label for="cBloodType">Blood Type</label>
+              <select id="cBloodType" required>
+                <option value="">— Select —</option>
+                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+              </select>
+            </div>
+          </div>
+          <div id="eligibilityResult" class="alert" role="status"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="checkEligBtn" style="margin-bottom:1rem;">Check Eligibility</button><br/>
+          <button type="submit" class="btn btn-primary">Record Collection</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Recent Collections</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Unit ID</th><th>Donor ID</th><th>Blood Type</th><th>Collected</th><th>Expires</th><th>Status</th></tr></thead>
+            <tbody id="collectionBody"><tr><td colspan="6" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Lab Testing ───────────────────────────────────────────────────── -->
+    <section id="tab-labtests" class="tab-panel">
+      <h1>Lab Testing</h1>
+      <div id="labTestAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Record Test Results</h2>
+        <p style="color:#555;font-size:.9rem;margin-bottom:1rem;">
+          Enter the blood unit ID and mark any positive test results. A unit passes only if all tests are negative.
+        </p>
+        <form id="labTestForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ltUnitId">Blood Unit ID</label>
+              <input type="number" id="ltUnitId" min="1" required placeholder="Enter unit ID" />
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;">
+              <button type="button" class="btn btn-secondary btn-sm" id="ltLookupBtn" style="margin-bottom:.1rem;">Look Up Unit</button>
+            </div>
+          </div>
+          <div id="ltUnitInfo" class="alert" role="status" style="margin-bottom:1rem;"></div>
+          <p style="font-weight:600;margin-bottom:.5rem;">Mark any POSITIVE results:</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem;margin-bottom:1rem;">
+            <label class="checkbox-group"><input type="checkbox" id="ltHiv" /> HIV</label>
+            <label class="checkbox-group"><input type="checkbox" id="ltHepB" /> Hepatitis B</label>
+            <label class="checkbox-group"><input type="checkbox" id="ltHepC" /> Hepatitis C</label>
+            <label class="checkbox-group"><input type="checkbox" id="ltSyphilis" /> Syphilis</label>
+            <label class="checkbox-group"><input type="checkbox" id="ltMalaria" /> Malaria</label>
+          </div>
+          <div class="form-group">
+            <label for="ltNotes">Notes (optional)</label>
+            <textarea id="ltNotes" rows="2" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-size:.9rem;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Test Results</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h2 style="margin:0;">Recent Test Results</h2>
+          <button class="btn btn-secondary btn-sm" id="refreshLabTestsBtn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Unit ID</th><th>Blood Type</th><th>Collected</th><th>HIV</th><th>Hep B</th><th>Hep C</th><th>Syphilis</th><th>Malaria</th><th>Result</th><th>Tested By</th><th>Tested At</th></tr></thead>
+            <tbody id="labTestsBody">
+              <tr><td colspan="11" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Blood Requests ────────────────────────────────────────────────── -->
+    <section id="tab-requests" class="tab-panel">
+      <h1>Blood Request Processing</h1>
+      <div id="bloodReqAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h2 style="margin:0;">Pending Requests</h2>
+          <button class="btn btn-secondary btn-sm" id="refreshBloodReqBtn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Requested By</th><th>Patient</th><th>Blood Type</th><th>Qty</th><th>Priority</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
+            <tbody id="bloodReqBody">
+              <tr><td colspan="9" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Allocate modal -->
+      <div id="allocateModal" class="modal-overlay" hidden>
+        <div class="modal-box">
+          <h2>Allocate Blood Unit</h2>
+          <div id="allocateAlert" class="alert" role="alert"></div>
+          <form id="allocateForm">
+            <input type="hidden" id="allocateReqId" />
+            <div class="form-group">
+              <label for="allocateUnitId">Blood Unit ID to Allocate</label>
+              <input type="number" id="allocateUnitId" min="1" required placeholder="Enter available unit ID" />
+            </div>
+            <div style="display:flex;gap:.75rem;margin-top:1rem;">
+              <button type="submit" class="btn btn-primary">Allocate</button>
+              <button type="button" class="btn btn-secondary" id="closeAllocateModal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Inventory ──────────────────────────────────────────────────────── -->
+    <section id="tab-inventory" class="tab-panel">
+      <h1>Inventory Management</h1>
+      <div id="inventoryAlert" class="alert" role="alert"></div>
+      <div style="margin-bottom:1rem;">
+        <button class="btn btn-primary btn-sm" id="expireBtn">Run Expiry Check</button>
+        <button class="btn btn-secondary btn-sm" id="refreshInventoryBtn" style="margin-left:.5rem;">Refresh</button>
+      </div>
+      <div class="card">
+        <h2>Stock Levels</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Blood Type</th><th>Available Units</th><th>Status</th><th>Last Updated</th></tr></thead>
+            <tbody id="inventoryBody"><tr><td colspan="4" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>All Blood Units</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Unit ID</th><th>Donor</th><th>Blood Type</th><th>Collected</th><th>Expires</th><th>Status</th></tr></thead>
+            <tbody id="allUnitsBody"><tr><td colspan="6" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Appointments ───────────────────────────────────────────────────── -->
+    <section id="tab-appointments" class="tab-panel">
+      <h1>Donor Appointments</h1>
+      <div id="apptAlert" class="alert" role="alert"></div>
+
+      <!-- Today's Schedule Summary -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <h2 style="margin:0;">📅 Today's Schedule</h2>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <input type="date" id="summaryDate" style="padding:.4rem .6rem;border:1px solid #ccc;border-radius:6px;font-size:.85rem;" />
+            <button class="btn btn-primary btn-sm" id="loadSummaryBtn">View</button>
+            <button class="btn btn-secondary btn-sm" id="emailSummaryBtn">📧 Email Summary to Lab Team</button>
+            <button class="btn btn-secondary btn-sm" id="sendRemindersBtn">🔔 Send Donor Reminders</button>
+            <button class="btn btn-secondary btn-sm" id="sendLabRemindersBtn">👨‍🔬 Remind Lab Team</button>
+          </div>
+        </div>
+        <div id="summaryAlert" class="alert" role="alert"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Donor</th><th>Blood Type</th><th>Phone</th><th>Notes</th><th>Status</th></tr></thead>
+            <tbody id="summaryBody"><tr><td colspan="6" class="empty-row">Loading today's schedule…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <p style="color:#555;margin:0;">All scheduled donor appointments.</p>
+          <button class="btn btn-secondary btn-sm" id="refreshApptBtn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Donor</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody id="apptBody"><tr><td colspan="6" class="empty-row">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── My Notifications ──────────────────────────────────────────────── -->
+    <section id="tab-mynotifs" class="tab-panel">
+      <h1>My Notifications</h1>
+      <div id="myNotifAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+          <input type="text" id="myNotifSearch" placeholder="Filter by keyword…" style="max-width:280px;" />
+          <button class="btn btn-primary btn-sm" id="myNotifSearchBtn">Filter</button>
+          <button class="btn btn-secondary btn-sm" id="myNotifClearBtn">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="myNotifRefreshBtn" style="margin-left:auto;">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Message</th><th>Sent At</th><th>Status</th></tr></thead>
+            <tbody id="myNotifBody">
+              <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ── Always send session cookie with every API request ─────────────────────────
+const _fetch = window.fetch;
+window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+if (!sessionStorage.getItem('staff_id')) { window.location.href = 'index.html'; }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id); if(!el) return;
+  el.textContent = msg; el.className = 'alert show alert-' + type;
+}
+function hideAlert(id) { const el=document.getElementById(id); if(el) el.className='alert'; }
+function statusBadge(s) {
+  const m={available:'badge-success',transfused:'badge-warning',expired:'badge-danger',
+    scheduled:'badge-success',cancelled:'badge-danger',completed:'badge-warning',missed:'badge-danger'};
+  return `<span class="badge ${m[s]||'badge-warning'}">${esc(s)}</span>`;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.lab-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lab-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('api/auth.php', { method:'DELETE' });
+  sessionStorage.clear(); window.location.href = 'index.html';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DONATION WORKFLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+let wfCurrentStep = 1;
+let wfDonorId     = null;   // confirmed donor ID after step 2
+let wfDonorName   = '';
+
+function wfGoTo(step) {
+  // Update step indicators
+  document.querySelectorAll('.wf-step').forEach(el => {
+    const n = parseInt(el.dataset.step);
+    el.classList.remove('active','done');
+    if (n < step)  el.classList.add('done');
+    if (n === step) el.classList.add('active');
+  });
+  // Show correct panel
+  document.querySelectorAll('.wf-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('wf-panel-' + step).classList.add('active');
+  wfCurrentStep = step;
+}
+
+// Step 1 → Step 2
+document.getElementById('wfStep1Next').addEventListener('click', () => {
+  const name = document.getElementById('wfName').value.trim();
+  const dob  = document.getElementById('wfDob').value;
+  const nid  = document.getElementById('wfNationalId').value.trim();
+  const phone= document.getElementById('wfPhone').value.trim();
+  if (!name || !dob || !nid || !phone) {
+    showAlert('wfStep1Alert','Please fill in all required fields (Name, DOB, National ID, Phone).','error');
+    return;
+  }
+  hideAlert('wfStep1Alert');
+  // Pre-fill step 2 preview
+  const bt = document.getElementById('wfBloodType').value;
+  document.getElementById('wfDonorPreview').innerHTML = `
+    <table style="max-width:420px;">
+      <tr><th style="width:140px;">Name</th><td>${esc(name)}</td></tr>
+      <tr><th>Date of Birth</th><td>${esc(dob)}</td></tr>
+      <tr><th>National ID</th><td>${esc(nid)}</td></tr>
+      <tr><th>Phone</th><td>${esc(phone)}</td></tr>
+      <tr><th>Blood Type</th><td>${bt ? esc(bt) : '<em>Not specified</em>'}</td></tr>
+    </table>
+    <p style="margin-top:.75rem;font-size:.85rem;color:#555;">
+      Click <strong>Register as New Donor</strong> to add this donor to the system,
+      or use <strong>Look Up Existing Donor</strong> on the previous step if they are already registered.
+    </p>`;
+  hideAlert('wfStep2Alert');
+  wfGoTo(2);
+});
+
+// Look up existing donor by National ID
+document.getElementById('wfLookupExisting').addEventListener('click', async () => {
+  const nid = document.getElementById('wfNationalId').value.trim();
+  if (!nid) { showAlert('wfStep1Alert','Enter a National ID to look up an existing donor.','error'); return; }
+  hideAlert('wfStep1Alert');
+  const res  = await fetch('api/donors.php?search=' + encodeURIComponent(nid));
+  const data = await res.json();
+  if (!res.ok || !Array.isArray(data) || !data.length) {
+    showAlert('wfStep1Alert','No donor found with that National ID. Register them as new.','error'); return;
+  }
+  const d = data[0];
+  wfDonorId   = d.id;
+  wfDonorName = d.name;
+  document.getElementById('wfDonorPreview').innerHTML = `
+    <div class="alert show alert-success" style="margin-bottom:.75rem;">
+      Donor found in system — ID #${esc(String(d.id))}
+    </div>
+    <table style="max-width:420px;">
+      <tr><th style="width:140px;">ID</th><td>${esc(String(d.id))}</td></tr>
+      <tr><th>Name</th><td>${esc(d.name)}</td></tr>
+      <tr><th>Blood Type</th><td>${esc(d.blood_type)}</td></tr>
+      <tr><th>Last Donation</th><td>${esc(d.last_donation_date||'Never')}</td></tr>
+    </table>`;
+  hideAlert('wfStep2Alert');
+  document.getElementById('wfRegisterBtn').textContent = 'Confirm & Proceed to Collection →';
+  wfGoTo(2);
+});
+
+// Step 2: Register or confirm
+document.getElementById('wfRegisterBtn').addEventListener('click', async () => {
+  hideAlert('wfStep2Alert');
+
+  if (wfDonorId) {
+    // Already looked up — go straight to collection
+    await wfPrepareStep3();
+    return;
+  }
+
+  // Register new donor
+  const name  = document.getElementById('wfName').value.trim();
+  const dob   = document.getElementById('wfDob').value;
+  const nid   = document.getElementById('wfNationalId').value.trim();
+  const phone = document.getElementById('wfPhone').value.trim();
+  const email = document.getElementById('wfEmail').value.trim();
+  const bt    = document.getElementById('wfBloodType').value;
+
+  if (!bt) { showAlert('wfStep2Alert','Blood type is required to register a donor.','error'); return; }
+
+  const body = { name, date_of_birth: dob, national_id: nid, phone, email: email||undefined,
+                 blood_type: bt, medical_history_flag: 0 };
+  const res  = await fetch('api/donors.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('wfStep2Alert', data.message || data.error || 'Registration failed.', 'error'); return; }
+
+  wfDonorId   = data.donor_id;
+  wfDonorName = name;
+  showAlert('wfStep2Alert', `Donor registered successfully. Assigned ID: ${wfDonorId}`, 'success');
+  document.getElementById('wfRegisterBtn').textContent = 'Proceed to Collection →';
+  document.getElementById('wfRegisterBtn').disabled = true;
+  setTimeout(async () => { await wfPrepareStep3(); }, 800);
+});
+
+async function wfPrepareStep3() {
+  // Load donor eligibility
+  const res  = await fetch('api/donors.php?id=' + wfDonorId);
+  const data = await res.json();
+  const banner = document.getElementById('wfEligibilityBanner');
+
+  document.getElementById('wfConfirmedDonorId').value = wfDonorId;
+
+  if (!res.ok) {
+    banner.textContent = 'Could not verify eligibility. Proceed with caution.';
+    banner.className   = 'alert show alert-error';
+  } else {
+    const medFlag = data.medical_history_flag == 1;
+    const lastDon = data.last_donation_date;
+    if (medFlag) {
+      banner.textContent = `${data.name} — INELIGIBLE due to medical history flag. Collection cannot proceed.`;
+      banner.className   = 'alert show alert-error';
+      document.getElementById('wfRecordCollectionBtn').disabled = true;
+    } else if (lastDon) {
+      const days = Math.floor((Date.now() - new Date(lastDon)) / 86400000);
+      if (days < 56) {
+        banner.textContent = `${data.name} — NOT YET ELIGIBLE. Last donated ${days} days ago. ${56-days} days remaining.`;
+        banner.className   = 'alert show alert-error';
+        document.getElementById('wfRecordCollectionBtn').disabled = true;
+      } else {
+        banner.textContent = `${data.name} (${data.blood_type}) — ELIGIBLE to donate.`;
+        banner.className   = 'alert show alert-success';
+        document.getElementById('wfRecordCollectionBtn').disabled = false;
+      }
+    } else {
+      banner.textContent = `${data.name} (${data.blood_type}) — ELIGIBLE (first-time donor).`;
+      banner.className   = 'alert show alert-success';
+      document.getElementById('wfRecordCollectionBtn').disabled = false;
+    }
+    if (data.blood_type) document.getElementById('wfCollectBloodType').value = data.blood_type;
+  }
+  hideAlert('wfStep3Alert');
+  wfGoTo(3);
+}
+
+document.getElementById('wfStep2Back').addEventListener('click', () => { wfGoTo(1); });
+document.getElementById('wfStep3Back').addEventListener('click', () => { wfGoTo(2); });
+
+// Step 3: Record collection
+document.getElementById('wfRecordCollectionBtn').addEventListener('click', async () => {
+  hideAlert('wfStep3Alert');
+  const bt = document.getElementById('wfCollectBloodType').value;
+  if (!bt) { showAlert('wfStep3Alert','Please select a blood type.','error'); return; }
+
+  const res  = await fetch('api/blood_units.php', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ donor_id: wfDonorId, blood_type: bt }),
+  });
+  const data = await res.json();
+  if (!res.ok) { showAlert('wfStep3Alert', data.error || data.reason || 'Collection failed.', 'error'); return; }
+
+  // Step 4: show summary + inventory snapshot
+  document.getElementById('wfSummary').innerHTML = `
+    <div class="alert show alert-success">
+      ✓ Blood collection recorded successfully.<br>
+      Donor: <strong>${esc(wfDonorName)}</strong> (ID #${esc(String(wfDonorId))}) &nbsp;|&nbsp;
+      Blood Type: <strong>${esc(bt)}</strong> &nbsp;|&nbsp;
+      Unit ID: <strong>${esc(String(data.unit_id))}</strong>
+    </div>`;
+
+  // Load fresh inventory snapshot
+  const invRes  = await fetch('api/inventory.php');
+  const invData = await invRes.json();
+  const snap    = document.getElementById('wfInventorySnapshot');
+  if (Array.isArray(invData) && invData.length) {
+    snap.innerHTML = invData.map(r => `
+      <tr class="${r.low_stock==1?(r.unit_count==0?'critical-stock':'low-stock'):''}">
+        <td><strong>${esc(r.blood_type)}</strong></td>
+        <td>${esc(String(r.unit_count))}</td>
+        <td>${r.low_stock==1?'<span class="badge badge-danger">Low</span>':'<span class="badge badge-success">OK</span>'}</td>
+      </tr>`).join('');
+  } else {
+    snap.innerHTML = '<tr><td colspan="3" class="empty-row">Could not load inventory.</td></tr>';
+  }
+
+  wfGoTo(4);
+  loadOverview(); // refresh overview stats in background
+});
+
+// Start over
+document.getElementById('wfStartOver').addEventListener('click', () => {
+  wfDonorId   = null;
+  wfDonorName = '';
+  document.getElementById('wfName').value        = '';
+  document.getElementById('wfDob').value         = '';
+  document.getElementById('wfNationalId').value  = '';
+  document.getElementById('wfPhone').value       = '';
+  document.getElementById('wfEmail').value       = '';
+  document.getElementById('wfBloodType').value   = '';
+  document.getElementById('wfDonorPreview').innerHTML = '';
+  document.getElementById('wfRegisterBtn').textContent = 'Register as New Donor';
+  document.getElementById('wfRegisterBtn').disabled    = false;
+  document.getElementById('wfRecordCollectionBtn').disabled = false;
+  hideAlert('wfStep1Alert'); hideAlert('wfStep2Alert'); hideAlert('wfStep3Alert');
+  wfGoTo(1);
+});
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadOverview() {
+  try {
+    const [donorsRes, inventoryRes, unitsRes] = await Promise.all([
+      fetch('api/donors.php'), fetch('api/inventory.php'), fetch('api/blood_units.php'),
+    ]);
+    const donors    = await donorsRes.json();
+    const inventory = await inventoryRes.json();
+    const units     = await unitsRes.json();
+
+    document.getElementById('statDonors').textContent = Array.isArray(donors) ? donors.length : '—';
+    const available = Array.isArray(units) ? units.filter(u => u.status === 'available') : [];
+    document.getElementById('statAvailable').textContent = available.length;
+    const soon = new Date(Date.now() + 7*86400000);
+    const expiring = available.filter(u => { const d=new Date(u.expiry_date); return d>=new Date()&&d<=soon; });
+    document.getElementById('statExpiring').textContent = expiring.length;
+    const lowTypes = Array.isArray(inventory) ? inventory.filter(r => r.low_stock==1).length : 0;
+    document.getElementById('statLowTypes').textContent = lowTypes;
+
+    const invBody = document.getElementById('overviewInventory');
+    if (Array.isArray(inventory) && inventory.length) {
+      invBody.innerHTML = inventory.map(r => `
+        <tr class="${r.low_stock==1?(r.unit_count==0?'critical-stock':'low-stock'):''}">
+          <td><strong>${esc(r.blood_type)}</strong></td>
+          <td>${esc(String(r.unit_count))}</td>
+          <td>${r.low_stock==1?'<span class="badge badge-danger">Low</span>':'<span class="badge badge-success">OK</span>'}</td>
+        </tr>`).join('');
+    }
+    const expBody = document.getElementById('expiringBody');
+    if (expiring.length) {
+      expBody.innerHTML = expiring.map(u => `
+        <tr class="low-stock">
+          <td>${esc(String(u.id))}</td><td>${esc(u.blood_type)}</td>
+          <td>${esc(String(u.donor_id))}</td><td>${esc(u.expiry_date)}</td>
+        </tr>`).join('');
+    } else {
+      expBody.innerHTML = '<tr><td colspan="4" class="empty-row">No units expiring within 7 days.</td></tr>';
+    }
+  } catch(e) { /* silent — overview is non-critical */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DONORS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadDonors(search='') {
+  const tbody = document.getElementById('donorsBody');
+  const url   = search ? 'api/donors.php?search='+encodeURIComponent(search) : 'api/donors.php';
+  const res   = await fetch(url);
+  const data  = await res.json();
+  if (!res.ok) { showAlert('donorsAlert', data.error||'Failed.','error'); return; }
+  if (!data.length) { tbody.innerHTML='<tr><td colspan="7" class="empty-row">No donors found.</td></tr>'; return; }
+  tbody.innerHTML = data.map(d => {
+    const lastDon = d.last_donation_date;
+    let eligHtml;
+    if (d.medical_history_flag==1) {
+      eligHtml='<span class="badge badge-danger">Ineligible</span>';
+    } else if (lastDon) {
+      const days=Math.floor((Date.now()-new Date(lastDon))/86400000);
+      eligHtml=days>=56?'<span class="badge badge-success">Eligible</span>':`<span class="badge badge-warning">${56-days}d left</span>`;
+    } else { eligHtml='<span class="badge badge-success">Eligible</span>'; }
+    return `<tr>
+      <td>${esc(String(d.id))}</td><td>${esc(d.name)}</td>
+      <td><span class="badge badge-danger">${esc(d.blood_type)}</span></td>
+      <td>${esc(d.phone)}</td><td>${esc(d.last_donation_date||'—')}</td>
+      <td>${eligHtml}</td>
+      <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openEditDonor(${d.id},'${esc(d.last_donation_date||'')}',${d.medical_history_flag})">Update</button>
+        <button class="btn btn-sm" style="background:#6c1a1a;color:#fff;" onclick="deleteDonor(${d.id},'${esc(d.name)}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('donorSearchBtn').addEventListener('click', () => loadDonors(document.getElementById('donorSearch').value.trim()));
+document.getElementById('donorClearBtn').addEventListener('click', () => { document.getElementById('donorSearch').value=''; loadDonors(); });
+document.getElementById('donorSearch').addEventListener('keydown', e => { if(e.key==='Enter') loadDonors(e.target.value.trim()); });
+
+function openEditDonor(id, lastDon, medFlag) {
+  document.getElementById('editDonorId').value = id;
+  document.getElementById('editDonorLastDonation').value = lastDon;
+  document.getElementById('editDonorMedFlag').checked = medFlag==1;
+  hideAlert('editDonorAlert');
+  document.getElementById('editDonorModal').hidden = false;
+}
+
+async function deleteDonor(id, name) {
+  if (!confirm(`Permanently delete donor "${name}"? This cannot be undone.`)) return;
+  const res  = await fetch('api/donors.php?id=' + id, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) { showAlert('donorsAlert', data.error || 'Delete failed.', 'error'); return; }
+  showAlert('donorsAlert', 'Donor deleted.', 'success');
+  loadDonors();
+}
+document.getElementById('closeEditDonor').addEventListener('click', () => { document.getElementById('editDonorModal').hidden=true; });
+document.getElementById('editDonorForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const id   = document.getElementById('editDonorId').value;
+  const body = {
+    last_donation_date:   document.getElementById('editDonorLastDonation').value||null,
+    medical_history_flag: document.getElementById('editDonorMedFlag').checked?1:0,
+  };
+  const res  = await fetch('api/donors.php?id='+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  document.getElementById('editDonorModal').hidden=true;
+  if (!res.ok) { showAlert('donorsAlert', data.error||'Update failed.','error'); return; }
+  showAlert('donorsAlert','Donor updated.','success'); loadDonors();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOOD COLLECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+document.getElementById('checkEligBtn').addEventListener('click', async () => {
+  const donorId = document.getElementById('cDonorId').value;
+  const el = document.getElementById('eligibilityResult');
+  if (!donorId) { el.textContent='Enter a donor ID first.'; el.className='alert show alert-error'; return; }
+  const res  = await fetch('api/donors.php?id='+donorId);
+  const data = await res.json();
+  if (!res.ok) { el.textContent='Donor not found.'; el.className='alert show alert-error'; return; }
+  const medFlag=data.medical_history_flag==1, lastDon=data.last_donation_date;
+  let msg, type;
+  if (medFlag) { msg=`${data.name} — INELIGIBLE (medical history flag).`; type='error'; }
+  else if (lastDon) {
+    const days=Math.floor((Date.now()-new Date(lastDon))/86400000);
+    if (days<56) { msg=`${data.name} — NOT YET ELIGIBLE. ${56-days} days remaining.`; type='error'; }
+    else { msg=`${data.name} (${data.blood_type}) — ELIGIBLE.`; type='success'; document.getElementById('cBloodType').value=data.blood_type; }
+  } else { msg=`${data.name} (${data.blood_type}) — ELIGIBLE (first-time).`; type='success'; document.getElementById('cBloodType').value=data.blood_type; }
+  el.textContent=msg; el.className='alert show alert-'+type;
+});
+
+document.getElementById('collectionForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('collectionAlert');
+  const body = { donor_id: parseInt(document.getElementById('cDonorId').value), blood_type: document.getElementById('cBloodType').value };
+  const res  = await fetch('api/blood_units.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('collectionAlert', data.error||data.reason||'Collection failed.','error'); return; }
+  showAlert('collectionAlert','Blood unit recorded. Unit ID: '+data.unit_id,'success');
+  e.target.reset(); document.getElementById('eligibilityResult').className='alert';
+  loadCollections(); loadOverview();
+});
+
+async function loadCollections() {
+  const tbody = document.getElementById('collectionBody');
+  const res   = await fetch('api/blood_units.php');
+  const data  = await res.json();
+  if (!Array.isArray(data)||!data.length) { tbody.innerHTML='<tr><td colspan="6" class="empty-row">No collections recorded.</td></tr>'; return; }
+  const today=new Date().toISOString().split('T')[0], soon=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  tbody.innerHTML = data.slice(0,20).map(u => {
+    const exp=u.status==='available'&&u.expiry_date<=soon&&u.expiry_date>=today;
+    return `<tr class="${exp?'low-stock':''}">
+      <td>${esc(String(u.id))}</td><td>${esc(String(u.donor_id))}</td>
+      <td>${esc(u.blood_type)}</td><td>${esc(u.collection_date)}</td>
+      <td>${esc(u.expiry_date)}${exp?' <span class="badge badge-warning">Soon</span>':''}</td>
+      <td>${statusBadge(u.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadInventory() {
+  const tbody = document.getElementById('inventoryBody');
+  const res   = await fetch('api/inventory.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('inventoryAlert', data.error||'Failed.','error'); return; }
+  tbody.innerHTML = data.map(r => `
+    <tr class="${r.low_stock==1?(r.unit_count==0?'critical-stock':'low-stock'):''}">
+      <td><strong>${esc(r.blood_type)}</strong></td>
+      <td>${esc(String(r.unit_count))}</td>
+      <td>${r.low_stock==1?'<span class="badge badge-danger">Low</span>':'<span class="badge badge-success">OK</span>'}</td>
+      <td>${esc(r.updated_at||'—')}</td>
+    </tr>`).join('');
+}
+
+async function loadAllUnits() {
+  const tbody = document.getElementById('allUnitsBody');
+  const res   = await fetch('api/blood_units.php');
+  const data  = await res.json();
+  if (!Array.isArray(data)||!data.length) { tbody.innerHTML='<tr><td colspan="6" class="empty-row">No units.</td></tr>'; return; }
+  const today=new Date().toISOString().split('T')[0], soon=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  tbody.innerHTML = data.map(u => {
+    const exp=u.status==='available'&&u.expiry_date<=soon&&u.expiry_date>=today;
+    return `<tr class="${exp?'low-stock':''}">
+      <td>${esc(String(u.id))}</td><td>${esc(String(u.donor_id))}</td>
+      <td>${esc(u.blood_type)}</td><td>${esc(u.collection_date)}</td>
+      <td>${esc(u.expiry_date)}${exp?' <span class="badge badge-warning">Expiring</span>':''}</td>
+      <td>${statusBadge(u.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('expireBtn').addEventListener('click', async () => {
+  const res=await fetch('api/inventory.php',{method:'PUT',headers:{'Content-Type':'application/json'},body:'{}'});
+  const data=await res.json();
+  if (!res.ok) { showAlert('inventoryAlert',data.error||'Failed.','error'); return; }
+  showAlert('inventoryAlert','Expiry check complete.','success');
+  loadInventory(); loadAllUnits(); loadOverview();
+});
+document.getElementById('refreshInventoryBtn').addEventListener('click', () => { loadInventory(); loadAllUnits(); });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPOINTMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── Appointments table header — add Actions column ───────────────────────────
+document.querySelector('#apptBody').closest('table').querySelector('thead tr').innerHTML =
+  '<th>ID</th><th>Donor</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Actions</th>';
+
+async function loadAppointments() {
+  const tbody = document.getElementById('apptBody');
+  const res   = await fetch('api/appointments.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('apptAlert', data.error||'Failed to load appointments.','error'); return; }
+  if (!Array.isArray(data)||!data.length) {
+    tbody.innerHTML='<tr><td colspan="7" class="empty-row">No appointments scheduled.</td></tr>'; return;
+  }
+  tbody.innerHTML = data.map(a => {
+    // Only show action buttons for scheduled appointments
+    const actions = a.status === 'scheduled' ? `
+      <button class="btn btn-sm" style="background:#28a745;color:#fff;margin-right:.3rem;"
+        onclick="updateApptStatus(${a.id},'completed')">✔ Completed</button>
+      <button class="btn btn-sm" style="background:#dc3545;color:#fff;"
+        onclick="updateApptStatus(${a.id},'missed')">✘ Missed</button>
+    ` : '—';
+    return `<tr>
+      <td>${esc(String(a.id))}</td>
+      <td>${esc(a.donor_name||String(a.donor_id))}</td>
+      <td>${esc(a.appointment_date)}</td>
+      <td>${esc(a.appointment_time)}</td>
+      <td>${statusBadge(a.status)}</td>
+      <td>${esc(a.notes||'—')}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateApptStatus(id, status) {
+  const label = status === 'completed' ? 'mark as completed' : 'mark as missed';
+  if (!confirm(`Are you sure you want to ${label} this appointment?`)) return;
+  const res  = await fetch('api/appointments.php', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ id, status }),
+  });
+  const data = await res.json();
+  if (!res.ok) { showAlert('apptAlert', data.error || 'Update failed.', 'error'); return; }
+  showAlert('apptAlert', `Appointment marked as ${status}.`, 'success');
+  loadAppointments();
+}
+
+document.getElementById('refreshApptBtn').addEventListener('click', loadAppointments);
+
+// ── Daily Schedule Summary ────────────────────────────────────────────────────
+// Set default date to today
+document.getElementById('summaryDate').value = new Date().toISOString().split('T')[0];
+
+async function loadDailySummary() {
+  const date  = document.getElementById('summaryDate').value || new Date().toISOString().split('T')[0];
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Loading…</td></tr>';
+  const res  = await fetch('api/daily_summary.php?date=' + encodeURIComponent(date));
+  const data = await res.json();
+  if (!res.ok) { showAlert('summaryAlert', data.error || 'Failed to load summary.', 'error'); return; }
+  const appts = data.appointments || [];
+  if (!appts.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No appointments scheduled for ${esc(date)}.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = appts.map(a => `<tr>
+    <td><strong>${esc(a.appointment_time)}</strong></td>
+    <td>${esc(a.donor_name)}</td>
+    <td><span class="badge badge-danger">${esc(a.blood_type)}</span></td>
+    <td>${esc(a.phone)}</td>
+    <td>${esc(a.notes || '—')}</td>
+    <td>${statusBadge(a.status)}</td>
+  </tr>`).join('');
+}
+
+document.getElementById('loadSummaryBtn').addEventListener('click', loadDailySummary);
+
+document.getElementById('emailSummaryBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('emailSummaryBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const res  = await fetch('api/daily_summary.php', { method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'summary'}) });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '📧 Email Summary to Lab Team';
+  if (!res.ok) { showAlert('summaryAlert', data.error || 'Failed to send.', 'error'); return; }
+  showAlert('summaryAlert', data.message, 'success');
+});
+
+document.getElementById('sendRemindersBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('sendRemindersBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const res  = await fetch('api/daily_summary.php', { method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'reminders'}) });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '🔔 Send Donor Reminders';
+  if (!res.ok) { showAlert('summaryAlert', data.error || 'Failed to send.', 'error'); return; }
+  showAlert('summaryAlert', data.message, 'success');
+});
+
+document.getElementById('sendLabRemindersBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('sendLabRemindersBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const res  = await fetch('api/daily_summary.php', { method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'reminders_lab'}) });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '👨‍🔬 Remind Lab Team';
+  if (!res.ok) { showAlert('summaryAlert', data.error || 'Failed to send.', 'error'); return; }
+  showAlert('summaryAlert', data.message, 'success');
+});
+
+// Load today's summary on page init
+loadDailySummary();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAB TESTING
+// ═══════════════════════════════════════════════════════════════════════════════
+document.getElementById('ltLookupBtn').addEventListener('click', async () => {
+  const unitId = document.getElementById('ltUnitId').value;
+  const el     = document.getElementById('ltUnitInfo');
+  if (!unitId) { el.textContent='Enter a unit ID.'; el.className='alert show alert-error'; return; }
+
+  const [unitRes, resultRes] = await Promise.all([
+    fetch('api/blood_units.php'),
+    fetch('api/lab_results.php?unit_id=' + unitId),
+  ]);
+  const units  = await unitRes.json();
+  const result = await resultRes.json();
+  const unit   = Array.isArray(units) ? units.find(u => u.id == unitId) : null;
+
+  if (!unit) { el.textContent='Unit not found.'; el.className='alert show alert-error'; return; }
+
+  let info = `Unit ${unitId} — Blood Type: ${unit.blood_type} — Collected: ${unit.collection_date} — Status: ${unit.status}`;
+  if (result) {
+    info += ` | Previous result: ${result.passed==1?'PASSED':'FAILED'} (tested ${result.tested_at})`;
+  }
+  el.textContent = info;
+  el.className   = 'alert show alert-' + (unit.status === 'available' || !result ? 'success' : 'error');
+});
+
+document.getElementById('labTestForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('labTestAlert');
+  const body = {
+    blood_unit_id: parseInt(document.getElementById('ltUnitId').value),
+    hiv:           document.getElementById('ltHiv').checked,
+    hepatitis_b:   document.getElementById('ltHepB').checked,
+    hepatitis_c:   document.getElementById('ltHepC').checked,
+    syphilis:      document.getElementById('ltSyphilis').checked,
+    malaria:       document.getElementById('ltMalaria').checked,
+    notes:         document.getElementById('ltNotes').value.trim(),
+  };
+  const res  = await fetch('api/lab_results.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('labTestAlert', data.error||'Failed to save results.','error'); return; }
+  const msg = data.passed
+    ? `Results saved. Unit PASSED all tests — status set to Available.`
+    : `Results saved. Unit FAILED testing — status set to Quarantined (expired).`;
+  showAlert('labTestAlert', msg, data.passed ? 'success' : 'error');
+  e.target.reset();
+  document.getElementById('ltUnitInfo').className = 'alert';
+  loadLabTests(); loadOverview();
+});
+
+async function loadLabTests() {
+  const tbody = document.getElementById('labTestsBody');
+  const res   = await fetch('api/lab_results.php');
+  const data  = await res.json();
+  if (!res.ok) { tbody.innerHTML='<tr><td colspan="11" class="empty-row">Unavailable.</td></tr>'; return; }
+  if (!Array.isArray(data)||!data.length) { tbody.innerHTML='<tr><td colspan="11" class="empty-row">No test results recorded.</td></tr>'; return; }
+  const neg = v => v==1?'<span class="badge badge-danger">+</span>':'<span class="badge badge-success">−</span>';
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${esc(String(r.blood_unit_id))}</td>
+      <td>${esc(r.blood_type||'—')}</td>
+      <td>${esc(r.collection_date||'—')}</td>
+      <td>${neg(r.hiv)}</td>
+      <td>${neg(r.hepatitis_b)}</td>
+      <td>${neg(r.hepatitis_c)}</td>
+      <td>${neg(r.syphilis)}</td>
+      <td>${neg(r.malaria)}</td>
+      <td>${r.passed==1?'<span class="badge badge-success">PASS</span>':'<span class="badge badge-danger">FAIL</span>'}</td>
+      <td>${esc(r.tested_by_name||'—')}</td>
+      <td>${esc((r.tested_at||'').split(' ')[0])}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('refreshLabTestsBtn').addEventListener('click', loadLabTests);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOOD REQUEST PROCESSING
+// ═══════════════════════════════════════════════════════════════════════════════
+const bReqColors = { pending:'badge-warning', allocated:'badge-success', completed:'badge-success', cancelled:'badge-danger' };
+
+async function loadBloodRequests() {
+  const tbody = document.getElementById('bloodReqBody');
+  const res   = await fetch('api/blood_requests.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('bloodReqAlert', data.error||'Failed.','error'); return; }
+  if (!Array.isArray(data)||!data.length) {
+    tbody.innerHTML='<tr><td colspan="9" class="empty-row">No blood requests.</td></tr>'; return;
+  }
+  tbody.innerHTML = data.map(r => {
+    let actions = '—';
+    if (r.status === 'pending') {
+      actions = `<button class="btn btn-primary btn-sm" onclick="openAllocate(${r.id})">Allocate</button>
+                 <button class="btn btn-sm" style="background:#dc3545;color:#fff;margin-left:.3rem;" onclick="updateReqStatus(${r.id},'cancelled')">Cancel</button>`;
+    } else if (r.status === 'allocated') {
+      actions = `<button class="btn btn-primary btn-sm" onclick="updateReqStatus(${r.id},'completed')">Mark Complete</button>`;
+    }
+    return `<tr>
+      <td>${esc(String(r.id))}</td>
+      <td>${esc(r.requested_by_name||String(r.requested_by))}</td>
+      <td>${esc(r.patient_identifier)}</td>
+      <td><span class="badge badge-danger">${esc(r.blood_type)}</span></td>
+      <td>${esc(String(r.quantity))}</td>
+      <td>${r.priority==='emergency'?'<span class="badge badge-danger">Emergency</span>':'Normal'}</td>
+      <td><span class="badge ${bReqColors[r.status]||'badge-warning'}">${esc(r.status)}</span></td>
+      <td>${esc((r.created_at||'').split(' ')[0])}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openAllocate(reqId) {
+  document.getElementById('allocateReqId').value = reqId;
+  document.getElementById('allocateUnitId').value = '';
+  hideAlert('allocateAlert');
+  document.getElementById('allocateModal').hidden = false;
+}
+document.getElementById('closeAllocateModal').addEventListener('click', () => {
+  document.getElementById('allocateModal').hidden = true;
+});
+
+document.getElementById('allocateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const reqId  = document.getElementById('allocateReqId').value;
+  const unitId = parseInt(document.getElementById('allocateUnitId').value);
+  const res    = await fetch('api/blood_requests.php?id='+reqId, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status:'allocated', allocated_unit_id: unitId }),
+  });
+  const data = await res.json();
+  if (!res.ok) { showAlert('allocateAlert', data.error||'Failed.','error'); return; }
+  document.getElementById('allocateModal').hidden = true;
+  showAlert('bloodReqAlert','Unit allocated successfully.','success');
+  loadBloodRequests();
+});
+
+async function updateReqStatus(id, status) {
+  if (!confirm(`Mark request #${id} as ${status}?`)) return;
+  const res  = await fetch('api/blood_requests.php?id='+id, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status }),
+  });
+  const data = await res.json();
+  if (!res.ok) { showAlert('bloodReqAlert', data.error||'Failed.','error'); return; }
+  showAlert('bloodReqAlert','Request updated.','success');
+  loadBloodRequests();
+}
+
+document.getElementById('refreshBloodReqBtn').addEventListener('click', loadBloodRequests);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MY NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadMyNotifications(search = '') {
+  const tbody = document.getElementById('myNotifBody');
+  const url   = search
+    ? 'api/staff_notifications.php?search=' + encodeURIComponent(search)
+    : 'api/staff_notifications.php';
+  const res  = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) { showAlert('myNotifAlert', data.error || 'Failed to load notifications.', 'error'); return; }
+  if (!Array.isArray(data) || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No notifications yet.</td></tr>'; return;
+  }
+  const statusMap = { sent:'badge-success', failed:'badge-danger', pending:'badge-warning' };
+  tbody.innerHTML = data.map(n => `
+    <tr>
+      <td>${esc(String(n.id))}</td>
+      <td>${esc(n.message)}</td>
+      <td>${esc(n.sent_at)}</td>
+      <td><span class="badge ${statusMap[n.delivery_status]||'badge-warning'}">${esc(n.delivery_status)}</span></td>
+    </tr>`).join('');
+}
+
+document.getElementById('myNotifSearchBtn').addEventListener('click', () => {
+  loadMyNotifications(document.getElementById('myNotifSearch').value.trim());
+});
+document.getElementById('myNotifClearBtn').addEventListener('click', () => {
+  document.getElementById('myNotifSearch').value = '';
+  loadMyNotifications();
+});
+document.getElementById('myNotifRefreshBtn').addEventListener('click', () => loadMyNotifications());
+document.getElementById('myNotifSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadMyNotifications(e.target.value.trim());
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadOverview();
+loadDonors();
+loadCollections();
+loadInventory();
+loadAllUnits();
+loadAppointments();
+loadLabTests();
+loadBloodRequests();
+loadMyNotifications();
+</script>
+
+</body>
+</html>

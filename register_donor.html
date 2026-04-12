@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Donor Registration</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: #f0f2f5;
+    }
+
+    /* ── Left hero panel (same as login) ── */
+    .hero {
+      width: 340px;
+      min-width: 260px;
+      background: linear-gradient(135deg, #8b0000 0%, #c0392b 50%, #e74c3c 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      top: -100px; left: -100px;
+    }
+    .hero-text { text-align: center; color: #fff; z-index: 1; }
+    .hero-text .donate { font-size: 1.6rem; font-weight: 300; letter-spacing: .3em; }
+    .hero-text .blood  { font-size: 4rem; font-weight: 900; letter-spacing: .1em; line-height: 1; }
+    .hero-text .save   { font-size: 1.2rem; font-weight: 300; letter-spacing: .3em; margin-top: .5rem; }
+    .blood-drop { margin-top: 2rem; z-index: 1; }
+    .blood-drop svg { width: 100px; height: 100px; }
+    .gold-bar {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 14px;
+      background: linear-gradient(180deg, #f0c040, #c8960c);
+    }
+
+    /* ── Right: registration form ── */
+    .form-panel {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      overflow-y: auto;
+    }
+
+    .reg-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+      padding: 2rem 2rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .reg-card h2 {
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: .83rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: .3rem;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: .5rem .7rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: .88rem;
+      background: #fafafa;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: #c0392b; background: #fff; }
+
+    /* Validation states */
+    .form-group input.invalid,
+    .form-group select.invalid { border-color: #e74c3c; background: #fff5f5; }
+    .form-group input.valid,
+    .form-group select.valid   { border-color: #27ae60; }
+
+    .field-error {
+      font-size: .75rem;
+      color: #e74c3c;
+      margin-top: .2rem;
+      display: none;
+    }
+    .field-error.show { display: block; }
+
+    .btn-submit {
+      width: 100%;
+      padding: .65rem;
+      background: #2980b9;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: .5rem;
+      transition: background .2s;
+    }
+    .btn-submit:hover { background: #1f6391; }
+    .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+    .login-link {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: .85rem;
+      color: #666;
+    }
+    .login-link a { color: #2980b9; text-decoration: none; font-weight: 600; }
+    .login-link a:hover { text-decoration: underline; }
+
+    .alert { display: none; padding: .65rem .9rem; border-radius: 6px; font-size: .85rem; margin-bottom: 1rem; }
+    .alert.show { display: block; }
+    .alert-error   { background: #fde8e8; color: #c0392b; border: 1px solid #f5c6cb; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      .hero { width: 100%; min-height: 180px; padding: 1.5rem 1rem; }
+      .hero-text .blood { font-size: 2.5rem; }
+      .gold-bar { display: none; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Left hero -->
+<div class="hero">
+  <div class="hero-text">
+    <div class="donate">DONATE</div>
+    <div class="blood">BLOOD</div>
+    <div class="save">SAVE LIFE</div>
+  </div>
+  <div class="blood-drop">
+    <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 5 C50 5 10 55 10 75 A40 40 0 0 0 90 75 C90 55 50 5 50 5Z" fill="white" opacity="0.95"/>
+      <path d="M50 80 C50 80 30 65 30 55 A10 10 0 0 1 50 52 A10 10 0 0 1 70 55 C70 65 50 80 50 80Z" fill="#c0392b"/>
+      <polyline points="32,60 38,60 41,50 44,70 47,55 50,60 53,60 56,52 59,68 62,60 68,60"
+                stroke="#c0392b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="gold-bar"></div>
+</div>
+
+<!-- Right: registration form -->
+<div class="form-panel">
+  <div class="reg-card">
+    <h2>Donor Registration Form</h2>
+
+    <div id="alert" class="alert" role="alert"></div>
+
+    <form id="registerForm" novalidate>
+
+      <!-- Full Name -->
+      <div class="form-group">
+        <label for="name">Full Name <span style="color:red">*</span></label>
+        <input type="text" id="name" name="name"
+               placeholder="e.g. Jane Doe"
+               pattern="[A-Za-z\s\-']+"
+               title="Name must contain letters only"
+               required />
+        <div class="field-error" id="err-name">Name must contain letters only (no numbers or symbols).</div>
+      </div>
+
+      <div class="form-row">
+        <!-- Date of Birth -->
+        <div class="form-group">
+          <label for="date_of_birth">Date of Birth <span style="color:red">*</span></label>
+          <input type="date" id="date_of_birth" name="date_of_birth" required />
+          <div class="field-error" id="err-dob">Please enter a valid date of birth. You must be 18–65.</div>
+        </div>
+
+        <!-- Blood Type -->
+        <div class="form-group">
+          <label for="blood_type">Blood Group <span style="color:red">*</span></label>
+          <select id="blood_type" name="blood_type" required>
+            <option value="">Select your blood group</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+          <div class="field-error" id="err-blood">Please select a blood group.</div>
+        </div>
+      </div>
+
+      <!-- National ID -->
+      <div class="form-group">
+        <label for="national_id">National ID <span style="color:red">*</span></label>
+        <input type="text" id="national_id" name="national_id"
+               placeholder="e.g. 12345678"
+               pattern="\d{6,12}"
+               title="National ID must be 6–12 digits"
+               required />
+        <div class="field-error" id="err-nid">National ID must be 6–12 digits only.</div>
+      </div>
+
+      <div class="form-row">
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email">Email Address <span style="color:red">*</span></label>
+          <input type="email" id="email" name="email"
+                 placeholder="e.g. jane@example.com" required />
+          <div class="field-error" id="err-email">Please enter a valid email address.</div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+          <label for="phone">Phone Number <span style="color:red">*</span></label>
+          <input type="tel" id="phone" name="phone"
+                 placeholder="e.g. 0712345678"
+                 pattern="[\+\d\s\-]{7,15}"
+                 title="Enter a valid phone number"
+                 required />
+          <div class="field-error" id="err-phone">Enter a valid phone number (digits only, 7–15 chars).</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <!-- Password -->
+        <div class="form-group">
+          <label for="password">Password <span style="color:red">*</span></label>
+          <input type="password" id="password" name="password"
+                 minlength="8"
+                 placeholder="Min. 8 characters" required />
+          <div class="field-error" id="err-pw">Password must be at least 8 characters.</div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="password_confirm">Confirm Password <span style="color:red">*</span></label>
+          <input type="password" id="password_confirm"
+                 placeholder="Re-enter password" required />
+          <div class="field-error" id="err-pw2">Passwords do not match.</div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">Register Now</button>
+    </form>
+
+    <div class="login-link">
+      Already have an account? <a href="donor_login.html">Sign In</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const alertBox  = document.getElementById('alert');
+  const submitBtn = document.getElementById('submitBtn');
+
+  function showAlert(msg, type) {
+    alertBox.textContent = msg;
+    alertBox.className   = 'alert show alert-' + type;
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function fieldError(id, show) {
+    const el = document.getElementById('err-' + id);
+    if (el) el.className = 'field-error' + (show ? ' show' : '');
+  }
+
+  function markField(el, valid) {
+    el.classList.toggle('valid',   valid);
+    el.classList.toggle('invalid', !valid);
+  }
+
+  // ── Real-time validation ──────────────────────────────────────────────────
+
+  // Name: letters, spaces, hyphens, apostrophes only
+  document.getElementById('name').addEventListener('input', function() {
+    const ok = /^[A-Za-z\s\-']+$/.test(this.value.trim()) && this.value.trim().length >= 2;
+    markField(this, ok);
+    fieldError('name', !ok && this.value.length > 0);
+  });
+
+  // Date of birth: must be 18–65 years old
+  document.getElementById('date_of_birth').addEventListener('change', function() {
+    const dob  = new Date(this.value);
+    const now  = new Date();
+    const age  = (now - dob) / (365.25 * 24 * 3600 * 1000);
+    const ok   = age >= 18 && age <= 65;
+    markField(this, ok);
+    fieldError('dob', !ok);
+  });
+
+  // Blood type: must be selected
+  document.getElementById('blood_type').addEventListener('change', function() {
+    const ok = this.value !== '';
+    markField(this, ok);
+    fieldError('blood', !ok);
+  });
+
+  // National ID: digits only, 6–12 chars
+  document.getElementById('national_id').addEventListener('input', function() {
+    const ok = /^\d{6,12}$/.test(this.value.trim());
+    markField(this, ok);
+    fieldError('nid', !ok && this.value.length > 0);
+  });
+
+  // Email: basic format check
+  document.getElementById('email').addEventListener('input', function() {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value.trim());
+    markField(this, ok);
+    fieldError('email', !ok && this.value.length > 0);
+  });
+
+  // Phone: digits, +, spaces, hyphens, 7–15 chars
+  document.getElementById('phone').addEventListener('input', function() {
+    const ok = /^[\+\d\s\-]{7,15}$/.test(this.value.trim());
+    markField(this, ok);
+    fieldError('phone', !ok && this.value.length > 0);
+  });
+
+  // Password: min 8 chars
+  document.getElementById('password').addEventListener('input', function() {
+    const ok = this.value.length >= 8;
+    markField(this, ok);
+    fieldError('pw', !ok && this.value.length > 0);
+    // Re-check confirm
+    const c = document.getElementById('password_confirm');
+    if (c.value) {
+      const match = c.value === this.value;
+      markField(c, match);
+      fieldError('pw2', !match);
+    }
+  });
+
+  // Confirm password: must match
+  document.getElementById('password_confirm').addEventListener('input', function() {
+    const match = this.value === document.getElementById('password').value;
+    markField(this, match);
+    fieldError('pw2', !match && this.value.length > 0);
+  });
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+  document.getElementById('registerForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    alertBox.className = 'alert';
+
+    const name     = document.getElementById('name').value.trim();
+    const dob      = document.getElementById('date_of_birth').value;
+    const blood    = document.getElementById('blood_type').value;
+    const nid      = document.getElementById('national_id').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const phone    = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('password_confirm').value;
+
+    // ── Validate all fields ───────────────────────────────────────────────
+    let valid = true;
+
+    if (!/^[A-Za-z\s\-']+$/.test(name) || name.length < 2) {
+      fieldError('name', true); valid = false;
+    }
+
+    const dob_d = new Date(dob);
+    const age   = (new Date() - dob_d) / (365.25 * 24 * 3600 * 1000);
+    if (!dob || age < 18 || age > 65) {
+      fieldError('dob', true); valid = false;
+    }
+
+    if (!blood) { fieldError('blood', true); valid = false; }
+
+    if (!/^\d{6,12}$/.test(nid)) { fieldError('nid', true); valid = false; }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fieldError('email', true); valid = false; }
+
+    if (!/^[\+\d\s\-]{7,15}$/.test(phone)) { fieldError('phone', true); valid = false; }
+
+    if (password.length < 8) { fieldError('pw', true); valid = false; }
+
+    if (password !== confirm) { fieldError('pw2', true); valid = false; }
+
+    if (!valid) {
+      showAlert('Please fix the errors highlighted above.', 'error');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Registering…';
+
+    try {
+      const res  = await fetch('api/donors.php', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ name, date_of_birth: dob, blood_type: blood,
+                                  national_id: nid, email, phone, password }),
+      });
+      const data = await res.json();
+
+      if (res.status === 201) {
+        showAlert('Registration successful! You can now sign in.', 'success');
+        document.getElementById('registerForm').reset();
+        document.querySelectorAll('.valid, .invalid').forEach(el => {
+          el.classList.remove('valid', 'invalid');
+        });
+        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+      } else {
+        showAlert(data.message || data.error || 'Registration failed.', 'error');
+      }
+    } catch {
+      showAlert('Network error. Please check your connection.', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Register Now';
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Donor Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">KNH BDMS</span>
+  <span id="navName" class="nav-donor-name"></span>
+  <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin:0.5rem 1rem 0.5rem auto;">Sign Out</button>
+</nav>
+
+<div class="donor-layout">
+
+  <!-- Sidebar tabs -->
+  <aside class="donor-sidebar">
+    <div class="donor-id-card">
+      <div class="donor-avatar" id="avatarInitial">?</div>
+      <div class="donor-id-info">
+        <strong id="sidebarName">—</strong>
+        <span id="sidebarCode" class="donor-code">KNH-00000</span>
+        <span id="sidebarBloodType" class="blood-type-badge">—</span>
+      </div>
+    </div>
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" data-tab="profile"       role="tab">👤 Profile</button>
+      <button class="tab-btn"        data-tab="history"       role="tab">🩸 Donation History</button>
+      <button class="tab-btn"        data-tab="appointments"  role="tab">📅 Appointments</button>
+      <button class="tab-btn"        data-tab="notifications" role="tab">🔔 Notifications</button>
+      <button class="tab-btn"        data-tab="education"     role="tab">📚 Education</button>
+      <button class="tab-btn"        data-tab="emergency"     role="tab">🚨 Emergency</button>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <main class="donor-main">
+
+    <!-- ── TAB: Profile ─────────────────────────────────────────────────── -->
+    <section id="tab-profile" class="tab-panel active" role="tabpanel">
+      <h1>My Profile</h1>
+      <div id="profileAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Personal Information</h2>
+        <form id="profileForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="pName">Full Name</label>
+              <input type="text" id="pName" name="name" required />
+            </div>
+            <div class="form-group">
+              <label for="pEmail">Email</label>
+              <input type="email" id="pEmail" name="email" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="pPhone">Phone</label>
+              <input type="tel" id="pPhone" name="phone" required />
+            </div>
+            <div class="form-group">
+              <label>Date of Birth</label>
+              <input type="text" id="pDob" disabled />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Blood Type</label>
+              <input type="text" id="pBloodType" disabled />
+            </div>
+            <div class="form-group">
+              <label>National ID</label>
+              <input type="text" id="pNationalId" disabled />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Donor ID</label>
+              <input type="text" id="pDonorCode" disabled />
+            </div>
+            <div class="form-group">
+              <label>Member Since</label>
+              <input type="text" id="pCreatedAt" disabled />
+            </div>
+          </div>
+
+          <h2 style="margin-top:1.5rem;">Notification Preferences</h2>
+          <div class="checkbox-group">
+            <input type="checkbox" id="pEmailOpt" name="email_opt_in" />
+            <label for="pEmailOpt">Receive email notifications</label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Changes</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Change Password</h2>
+        <div id="pwAlert" class="alert" role="alert"></div>
+        <form id="passwordForm">
+          <div class="form-group">
+            <label for="pwCurrent">Current Password</label>
+            <input type="password" id="pwCurrent" name="current_password" placeholder="Leave blank if none set" />
+          </div>
+          <div class="form-group">
+            <label for="pwNew">New Password</label>
+            <input type="password" id="pwNew" name="new_password" required minlength="8" />
+          </div>
+          <div class="form-group">
+            <label for="pwConfirm">Confirm New Password</label>
+            <input type="password" id="pwConfirm" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </form>
+      </div>
+    </section>
+
+
+    <!-- ── TAB: Donation History ─────────────────────────────────────────── -->
+    <section id="tab-history" class="tab-panel" role="tabpanel">
+      <h1>Donation History</h1>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="statTotal">—</span>
+          <span class="stat-label">Total Donations</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statEligBadge">—</span>
+          <span class="stat-label">Eligibility Status</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statNextDate">—</span>
+          <span class="stat-label">Next Eligible Date</span>
+        </div>
+      </div>
+
+      <div id="historyAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Unit ID</th>
+                <th>Blood Type</th>
+                <th>Collection Date</th>
+                <th>Expiry Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="5" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── TAB: Appointments ─────────────────────────────────────────────── -->
+    <section id="tab-appointments" class="tab-panel" role="tabpanel">
+      <h1>Appointments</h1>
+      <div id="apptAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Schedule New Appointment</h2>
+        <form id="apptForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="apptDate">Date</label>
+              <input type="date" id="apptDate" name="appointment_date" required />
+            </div>
+            <div class="form-group">
+              <label for="apptTime">Time</label>
+              <input type="time" id="apptTime" name="appointment_time" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="apptNotes">Notes (optional)</label>
+            <textarea id="apptNotes" name="notes" rows="2" placeholder="Any special requests or notes…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Schedule Appointment</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>My Appointments</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="apptBody">
+              <tr><td colspan="5" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reschedule modal -->
+      <div id="rescheduleModal" class="modal-overlay" hidden>
+        <div class="modal-box">
+          <h2>Reschedule Appointment</h2>
+          <form id="rescheduleForm">
+            <input type="hidden" id="rescheduleId" />
+            <div class="form-row">
+              <div class="form-group">
+                <label for="rescheduleDate">New Date</label>
+                <input type="date" id="rescheduleDate" required />
+              </div>
+              <div class="form-group">
+                <label for="rescheduleTime">New Time</label>
+                <input type="time" id="rescheduleTime" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="rescheduleNotes">Notes</label>
+              <textarea id="rescheduleNotes" rows="2"></textarea>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <button type="button" class="btn btn-secondary" id="closeModal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── TAB: Notifications ────────────────────────────────────────────── -->
+    <section id="tab-notifications" class="tab-panel" role="tabpanel">
+      <h1>Notifications</h1>
+      <div id="notifAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Sent At</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="notifBody">
+              <tr><td colspan="3" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB: Messages ────────────────────────────────────────────────── -->
+    <!-- ── TAB: Education ────────────────────────────────────────────────── -->
+    <section id="tab-education" class="tab-panel" role="tabpanel">
+      <h1>Educational Resources</h1>
+
+      <div class="card">
+        <h2>Eligibility Guidelines</h2>
+        <ul class="edu-list">
+          <li>You must be between <strong>18 and 65 years</strong> of age.</li>
+          <li>Minimum weight of <strong>50 kg (110 lbs)</strong>.</li>
+          <li>You must wait at least <strong>56 days</strong> between whole blood donations.</li>
+          <li>You must be in good general health on the day of donation.</li>
+          <li>Haemoglobin level must be at least <strong>12.5 g/dL</strong> (females) or <strong>13.5 g/dL</strong> (males).</li>
+          <li>You must not have donated blood in the last 56 days.</li>
+          <li>Certain medications, recent surgeries, or travel to malaria-endemic areas may temporarily defer you.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>The Donation Process</h2>
+        <ol class="edu-list">
+          <li><strong>Registration</strong> — Present your ID and complete a health questionnaire.</li>
+          <li><strong>Mini health check</strong> — Blood pressure, pulse, temperature, and haemoglobin screening.</li>
+          <li><strong>Donation</strong> — The actual blood draw takes about 8–10 minutes. Approximately 450 mL is collected.</li>
+          <li><strong>Refreshments</strong> — Rest for 10–15 minutes and enjoy provided snacks and juice.</li>
+          <li><strong>Recovery</strong> — Drink plenty of fluids and avoid strenuous activity for 24 hours.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary>Does donating blood hurt?</summary>
+            <p>You may feel a brief pinch when the needle is inserted, but the donation itself is generally painless.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How long does it take to replenish donated blood?</summary>
+            <p>Your body replaces the plasma within 24 hours. Red blood cells are fully replenished within 4–6 weeks.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Can I donate if I have a tattoo?</summary>
+            <p>Yes, provided the tattoo was done at a licensed facility and is fully healed (at least 6 months old).</p>
+          </details>
+          <details class="faq-item">
+            <summary>What should I eat before donating?</summary>
+            <p>Have a healthy meal and drink plenty of water. Avoid fatty foods before donation as they can affect blood tests.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Who can receive my blood type?</summary>
+            <p>Compatibility depends on your blood type. O- is the universal donor. AB+ can receive from all types. Ask staff for a full compatibility chart.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── TAB: Emergency ────────────────────────────────────────────────── -->
+    <section id="tab-emergency" class="tab-panel" role="tabpanel">
+      <h1>Emergency Response</h1>
+      <div id="emergencyAlert" class="alert" role="alert"></div>
+
+      <div class="card emergency-banner">
+        <h2>🚨 Current Blood Shortages</h2>
+        <p style="color:#555;margin-bottom:1rem;">
+          The following blood types are critically low at KNH. If your blood type matches,
+          please consider donating as soon as possible.
+        </p>
+        <div id="shortageGrid" class="shortage-grid">
+          <p class="empty-row">Loading…</p>
+        </div>
+        <button class="btn btn-danger" id="volunteerBtn" style="margin-top:1.25rem;" hidden>
+          I Can Donate — Notify Staff
+        </button>
+        <p id="volunteerMsg" style="display:none;color:#155724;font-weight:600;margin-top:0.75rem;"></p>
+      </div>
+
+      <div class="card">
+        <h2>My Blood Type Compatibility</h2>
+        <p style="color:#555;margin-bottom:0.75rem;">
+          Blood type: <strong id="emergBloodType">—</strong>
+        </p>
+        <div id="compatInfo" class="compat-info"></div>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /.donor-layout -->
+
+
+<script>
+// ── Auth guard ───────────────────────────────────────────────────────────────
+const donorId   = sessionStorage.getItem('donor_id');
+const donorName = sessionStorage.getItem('donor_name');
+const bloodType = sessionStorage.getItem('blood_type');
+
+if (!donorId) { window.location.href = 'index.html'; }
+
+// ── Always send session cookie with every API request ─────────────────────────
+const _fetch = window.fetch;
+window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className   = 'alert show alert-' + type;
+}
+
+function hideAlert(id) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'alert';
+}
+
+function statusBadge(s) {
+  const map = {
+    available:'badge-success', transfused:'badge-warning', expired:'badge-danger',
+    scheduled:'badge-success', cancelled:'badge-danger',   completed:'badge-warning',
+    sent:'badge-success',      failed:'badge-danger',      pending:'badge-warning',
+  };
+  return `<span class="badge ${map[s]||'badge-warning'}">${esc(s)}</span>`;
+}
+
+// ── Sidebar init ─────────────────────────────────────────────────────────────
+document.getElementById('navName').textContent       = donorName || '';
+document.getElementById('sidebarName').textContent   = donorName || '—';
+document.getElementById('sidebarBloodType').textContent = bloodType || '—';
+
+const initial = (donorName || '?')[0].toUpperCase();
+document.getElementById('avatarInitial').textContent = initial;
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const tabBtns   = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabPanels.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Logout ───────────────────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('api/donor_auth.php', { method: 'DELETE' });
+  sessionStorage.clear();
+  window.location.href = 'index.html';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadProfile() {
+  try {
+    const res  = await fetch('api/donor_profile.php');
+    const data = await res.json();
+    if (!res.ok) { showAlert('profileAlert', data.error || 'Failed to load profile.', 'error'); return; }
+
+    document.getElementById('pName').value       = data.name        || '';
+    document.getElementById('pEmail').value      = data.email       || '';
+    document.getElementById('pPhone').value      = data.phone       || '';
+    document.getElementById('pDob').value        = data.date_of_birth || '';
+    document.getElementById('pBloodType').value  = data.blood_type  || '';
+    document.getElementById('pNationalId').value = data.national_id || '';
+    document.getElementById('pDonorCode').value  = data.donor_code  || '';
+    document.getElementById('pCreatedAt').value  = data.created_at  ? data.created_at.split(' ')[0] : '';
+    document.getElementById('pEmailOpt').checked = data.email_opt_in == 1;
+
+    // Update sidebar donor code
+    document.getElementById('sidebarCode').textContent = data.donor_code || '';
+  } catch (e) {
+    showAlert('profileAlert', 'Network error loading profile.', 'error');
+  }
+}
+
+document.getElementById('profileForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  hideAlert('profileAlert');
+  const fd = new FormData(e.target);
+  const body = {
+    name:         fd.get('name'),
+    email:        fd.get('email'),
+    phone:        fd.get('phone'),
+    email_opt_in: document.getElementById('pEmailOpt').checked ? 1 : 0,
+  };
+  try {
+    const res  = await fetch('api/donor_profile.php', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { showAlert('profileAlert', data.error || 'Update failed.', 'error'); return; }
+    showAlert('profileAlert', 'Profile updated successfully.', 'success');
+    sessionStorage.setItem('donor_name', body.name);
+    document.getElementById('navName').textContent     = body.name;
+    document.getElementById('sidebarName').textContent = body.name;
+    document.getElementById('avatarInitial').textContent = body.name[0].toUpperCase();
+  } catch (err) {
+    showAlert('profileAlert', 'Network error.', 'error');
+  }
+});
+
+document.getElementById('passwordForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  hideAlert('pwAlert');
+  const newPw  = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  if (newPw !== confirm) { showAlert('pwAlert', 'Passwords do not match.', 'error'); return; }
+  const body = {
+    current_password: document.getElementById('pwCurrent').value,
+    new_password:     newPw,
+  };
+  try {
+    const res  = await fetch('api/donor_profile.php', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { showAlert('pwAlert', data.error || 'Password update failed.', 'error'); return; }
+    showAlert('pwAlert', 'Password updated successfully.', 'success');
+    e.target.reset();
+  } catch (err) {
+    showAlert('pwAlert', 'Network error.', 'error');
+  }
+});
+
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DONATION HISTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadHistory() {
+  const tbody = document.getElementById('historyBody');
+  try {
+    const [unitsRes, profileRes] = await Promise.all([
+      fetch('api/blood_units.php?donor_id=' + encodeURIComponent(donorId)),
+      fetch('api/donor_profile.php'),
+    ]);
+    const units   = await unitsRes.json();
+    const profile = await profileRes.json();
+
+    // Stats
+    const total = Array.isArray(units) ? units.length : 0;
+    document.getElementById('statTotal').textContent = total;
+
+    const nextDate = profile.next_eligible_date;
+    const today    = new Date().toISOString().split('T')[0];
+    const eligible = !nextDate || nextDate <= today;
+
+    document.getElementById('statEligBadge').innerHTML = eligible
+      ? '<span class="badge badge-success">Eligible</span>'
+      : '<span class="badge badge-warning">Not Yet</span>';
+    document.getElementById('statNextDate').textContent = nextDate || 'Now';
+
+    if (!unitsRes.ok) { showAlert('historyAlert', units.error || 'Failed to load history.', 'error'); return; }
+
+    if (!total) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No donations recorded yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = units.map(u => `
+      <tr>
+        <td>${esc(String(u.id))}</td>
+        <td>${esc(u.blood_type)}</td>
+        <td>${esc(u.collection_date)}</td>
+        <td>${esc(u.expiry_date)}</td>
+        <td>${statusBadge(u.status)}</td>
+      </tr>`).join('');
+  } catch (err) {
+    showAlert('historyAlert', 'Network error loading history.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPOINTMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadAppointments() {
+  const tbody = document.getElementById('apptBody');
+  try {
+    const res  = await fetch('api/appointments.php');
+    const data = await res.json();
+    if (!res.ok) { showAlert('apptAlert', data.error || 'Failed to load appointments.', 'error'); return; }
+
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No appointments yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map(a => `
+      <tr>
+        <td>${esc(a.appointment_date)}</td>
+        <td>${esc(a.appointment_time)}</td>
+        <td>${statusBadge(a.status)}</td>
+        <td>${esc(a.notes || '—')}</td>
+        <td>
+          ${a.status === 'scheduled' ? `
+            <button class="btn btn-secondary btn-sm" onclick="openReschedule(${a.id},'${esc(a.appointment_date)}','${esc(a.appointment_time)}','${esc(a.notes||'')}')">Reschedule</button>
+            <button class="btn btn-sm" style="background:#dc3545;color:#fff;" onclick="cancelAppt(${a.id})">Cancel</button>
+          ` : '—'}
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    showAlert('apptAlert', 'Network error loading appointments.', 'error');
+  }
+}
+
+// Set min date to today
+document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
+
+document.getElementById('apptForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  hideAlert('apptAlert');
+  const fd = new FormData(e.target);
+  const body = { appointment_date: fd.get('appointment_date'), appointment_time: fd.get('appointment_time'), notes: fd.get('notes') };
+  try {
+    const res  = await fetch('api/appointments.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { showAlert('apptAlert', data.error || 'Failed to schedule.', 'error'); return; }
+    showAlert('apptAlert', 'Appointment scheduled successfully.', 'success');
+    e.target.reset();
+    loadAppointments();
+  } catch (err) {
+    showAlert('apptAlert', 'Network error.', 'error');
+  }
+});
+
+function openReschedule(id, date, time, notes) {
+  document.getElementById('rescheduleId').value    = id;
+  document.getElementById('rescheduleDate').value  = date;
+  document.getElementById('rescheduleTime').value  = time;
+  document.getElementById('rescheduleNotes').value = notes;
+  document.getElementById('rescheduleDate').min    = new Date().toISOString().split('T')[0];
+  document.getElementById('rescheduleModal').hidden = false;
+}
+
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('rescheduleModal').hidden = true;
+});
+
+document.getElementById('rescheduleForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {
+    id:               parseInt(document.getElementById('rescheduleId').value),
+    appointment_date: document.getElementById('rescheduleDate').value,
+    appointment_time: document.getElementById('rescheduleTime').value,
+    notes:            document.getElementById('rescheduleNotes').value,
+  };
+  try {
+    const res  = await fetch('api/appointments.php', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    document.getElementById('rescheduleModal').hidden = true;
+    if (!res.ok) { showAlert('apptAlert', data.error || 'Reschedule failed.', 'error'); return; }
+    showAlert('apptAlert', 'Appointment rescheduled.', 'success');
+    loadAppointments();
+  } catch (err) {
+    showAlert('apptAlert', 'Network error.', 'error');
+  }
+});
+
+async function cancelAppt(id) {
+  if (!confirm('Cancel this appointment?')) return;
+  try {
+    const res  = await fetch('api/appointments.php?id=' + id, { method:'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { showAlert('apptAlert', data.error || 'Cancel failed.', 'error'); return; }
+    showAlert('apptAlert', 'Appointment cancelled.', 'success');
+    loadAppointments();
+  } catch (err) {
+    showAlert('apptAlert', 'Network error.', 'error');
+  }
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadNotifications() {
+  const tbody = document.getElementById('notifBody');
+  try {
+    const res  = await fetch('api/donor_notifications.php?donor_id=' + encodeURIComponent(donorId));
+    const data = await res.json();
+    if (!res.ok) { showAlert('notifAlert', data.error || 'Failed to load notifications.', 'error'); return; }
+
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-row">No notifications yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map(n => `
+      <tr>
+        <td>${esc(n.message_type.replace(/_/g,' '))}</td>
+        <td>${esc(n.sent_at)}</td>
+        <td>${statusBadge(n.delivery_status)}</td>
+      </tr>`).join('');
+  } catch (err) {
+    showAlert('notifAlert', 'Network error loading notifications.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMERGENCY ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const COMPAT_MAP = {
+  'O-':  { canDonateTo: ['O-','O+','A-','A+','B-','B+','AB-','AB+'], canReceiveFrom: ['O-'] },
+  'O+':  { canDonateTo: ['O+','A+','B+','AB+'],                       canReceiveFrom: ['O-','O+'] },
+  'A-':  { canDonateTo: ['A-','A+','AB-','AB+'],                      canReceiveFrom: ['O-','A-'] },
+  'A+':  { canDonateTo: ['A+','AB+'],                                  canReceiveFrom: ['O-','O+','A-','A+'] },
+  'B-':  { canDonateTo: ['B-','B+','AB-','AB+'],                      canReceiveFrom: ['O-','B-'] },
+  'B+':  { canDonateTo: ['B+','AB+'],                                  canReceiveFrom: ['O-','O+','B-','B+'] },
+  'AB-': { canDonateTo: ['AB-','AB+'],                                 canReceiveFrom: ['O-','A-','B-','AB-'] },
+  'AB+': { canDonateTo: ['AB+'],                                       canReceiveFrom: ['O-','O+','A-','A+','B-','B+','AB-','AB+'] },
+};
+
+async function loadEmergency() {
+  const grid = document.getElementById('shortageGrid');
+  const btn  = document.getElementById('volunteerBtn');
+
+  // Compatibility info
+  const bt = bloodType || sessionStorage.getItem('blood_type');
+  document.getElementById('emergBloodType').textContent = bt || '—';
+  const compat = COMPAT_MAP[bt];
+  if (compat) {
+    document.getElementById('compatInfo').innerHTML = `
+      <p><strong>Can donate to:</strong> ${compat.canDonateTo.join(', ')}</p>
+      <p style="margin-top:0.5rem;"><strong>Can receive from:</strong> ${compat.canReceiveFrom.join(', ')}</p>`;
+  }
+
+  try {
+    const res  = await fetch('api/emergency_alerts.php');
+    const data = await res.json();
+    if (!res.ok) { showAlert('emergencyAlert', data.error || 'Failed to load alerts.', 'error'); return; }
+
+    const alerts = data.alerts || [];
+
+    if (!alerts.length) {
+      grid.innerHTML = '<p style="color:#155724;font-weight:600;">✅ No critical shortages at this time. Thank you!</p>';
+      btn.hidden = true;
+      return;
+    }
+
+    grid.innerHTML = alerts.map(a => `
+      <div class="shortage-card ${a.unit_count === 0 ? 'shortage-critical' : 'shortage-low'}">
+        <span class="shortage-type">${esc(a.blood_type)}</span>
+        <span class="shortage-count">${esc(String(a.unit_count))} units</span>
+        <span class="shortage-label">${a.unit_count === 0 ? 'CRITICAL' : 'LOW'}</span>
+      </div>`).join('');
+
+    // Show volunteer button if donor's blood type is in shortage list
+    const myType = bt;
+    const isNeeded = alerts.some(a => {
+      const compat = COMPAT_MAP[myType];
+      return compat && compat.canDonateTo.includes(a.blood_type);
+    });
+
+    if (isNeeded) {
+      btn.hidden = false;
+    }
+  } catch (err) {
+    showAlert('emergencyAlert', 'Network error loading alerts.', 'error');
+  }
+}
+
+document.getElementById('volunteerBtn').addEventListener('click', async () => {
+  try {
+    const res  = await fetch('api/emergency_alerts.php', { method:'POST' });
+    const data = await res.json();
+    document.getElementById('volunteerBtn').hidden = true;
+    const msg = document.getElementById('volunteerMsg');
+    msg.textContent = data.message || 'Thank you for volunteering!';
+    msg.style.display = 'block';
+  } catch (err) {
+    showAlert('emergencyAlert', 'Network error.', 'error');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT — load all data
+// ═══════════════════════════════════════════════════════════════════════════════
+loadProfile();
+loadHistory();
+loadAppointments();
+loadNotifications();
+loadEmergency();
+</script>
+
+</body>
+</html>

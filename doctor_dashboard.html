@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Doctor Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .doc-layout { display:flex; min-height:calc(100vh - 48px); }
+    .doc-sidebar {
+      width:220px; min-width:180px; background:#1a1a2e; color:#e0e0e0;
+      display:flex; flex-direction:column; padding:1rem 0;
+      position:sticky; top:0; height:calc(100vh - 48px); overflow-y:auto;
+    }
+    .doc-sidebar .sidebar-brand {
+      font-size:.78rem; font-weight:700; letter-spacing:.08em; color:#aaa;
+      padding:0 1rem 1rem; border-bottom:1px solid #2e2e4e; margin-bottom:.5rem;
+      text-transform:uppercase;
+    }
+    .doc-tab-btn {
+      background:none; border:none; text-align:left; width:100%;
+      padding:.65rem 1rem; font-size:.88rem; color:#ccc; cursor:pointer;
+      transition:background .15s,color .15s;
+    }
+    .doc-tab-btn:hover { background:#16213e; color:#fff; }
+    .doc-tab-btn.active { background:#6f42c1; color:#fff; font-weight:700; }
+    .doc-main { flex:1; padding:2rem; overflow-y:auto; }
+    .tab-panel { display:none; } .tab-panel.active { display:block; }
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .stat-card { background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.07);
+      padding:1.25rem; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
+    .stat-value { font-size:1.8rem; font-weight:700; color:#1a1a2e; }
+    .stat-label { font-size:.78rem; color:#888; text-align:center; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .empty-row { text-align:center; color:#888; padding:1.5rem 0; }
+    .compat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:.75rem; margin-top:1rem; }
+    .compat-card { background:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px;
+      padding:.85rem .75rem; text-align:center; }
+    .compat-card.available { background:#d4edda; border-color:#c3e6cb; }
+    .compat-card.low { background:#fff3cd; border-color:#ffeeba; }
+    .compat-card.empty { background:#f8d7da; border-color:#f5c6cb; }
+    .compat-type { font-size:1.3rem; font-weight:700; }
+    .compat-count { font-size:.8rem; color:#555; }
+    @media(max-width:768px){
+      .doc-layout{flex-direction:column;}
+      .doc-sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:.5rem;}
+      .doc-tab-btn{width:auto;padding:.45rem .75rem;font-size:.8rem;}
+      .doc-main{padding:1rem;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .form-row{grid-template-columns:1fr;}
+    }
+    @media(max-width:480px){ .stats-row{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">KNH BDMS — Doctor</span>
+  <span id="navRole" style="color:#aaa;font-size:.85rem;padding:.75rem .5rem;">Doctor</span>
+  <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin:.5rem 1rem .5rem auto;">Sign Out</button>
+</nav>
+
+<div class="doc-layout">
+  <aside class="doc-sidebar">
+    <div class="sidebar-brand">Doctor</div>
+    <button class="doc-tab-btn active" data-tab="requests">🩸 Blood Requests</button>
+    <button class="doc-tab-btn"        data-tab="compatibility">🔬 Compatibility Check</button>
+    <button class="doc-tab-btn"        data-tab="transfusion">💉 Record Transfusion</button>
+    <button class="doc-tab-btn"        data-tab="history">📋 Transfusion History</button>
+    <button class="doc-tab-btn"        data-tab="inventory">📦 Inventory View</button>
+    <button class="doc-tab-btn"        data-tab="donors">🩸 Donor Lookup</button>
+    <button class="doc-tab-btn"        data-tab="mynotifs">🔔 My Notifications</button>
+  </aside>
+
+  <main class="doc-main">
+
+    <!-- ── Blood Requests ────────────────────────────────────────────────── -->
+    <section id="tab-requests" class="tab-panel active">
+      <h1>Blood Requests</h1>
+      <div id="reqAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Submit New Blood Request</h2>
+        <form id="bloodRequestForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="reqPatient">Patient Identifier</label>
+              <input type="text" id="reqPatient" placeholder="e.g. KNH-PAT-00123" required />
+            </div>
+            <div class="form-group">
+              <label for="reqBloodType">Blood Type Required</label>
+              <select id="reqBloodType" required>
+                <option value="">— Select —</option>
+                <option>A+</option><option>A-</option>
+                <option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option>
+                <option>O+</option><option>O-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="reqQty">Units Needed</label>
+              <input type="number" id="reqQty" value="1" min="1" max="20" required />
+            </div>
+            <div class="form-group">
+              <label for="reqPriority">Priority</label>
+              <select id="reqPriority">
+                <option value="normal">Normal</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="reqNotes">Clinical Notes (optional)</label>
+            <textarea id="reqNotes" rows="2" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-size:.9rem;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Submit Request</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h2 style="margin:0;">My Requests</h2>
+          <button class="btn btn-secondary btn-sm" id="refreshReqBtn">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Patient</th><th>Blood Type</th><th>Qty</th><th>Priority</th><th>Status</th><th>Submitted</th><th>Action</th></tr></thead>
+            <tbody id="reqBody">
+              <tr><td colspan="8" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Compatibility Check ───────────────────────────────────────────── -->
+    <section id="tab-compatibility" class="tab-panel">
+      <h1>Donor-Recipient Compatibility Check</h1>
+      <div id="compatAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Find Compatible Blood Units</h2>
+        <form id="compatForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="patientId">Patient Identifier</label>
+              <input type="text" id="patientId" placeholder="e.g. KNH-PAT-00123" required />
+            </div>
+            <div class="form-group">
+              <label for="patientBloodType">Patient Blood Type</label>
+              <select id="patientBloodType" required>
+                <option value="">— Select —</option>
+                <option>A+</option><option>A-</option>
+                <option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option>
+                <option>O+</option><option>O-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="requestedUnits">Units Requested</label>
+            <input type="number" id="requestedUnits" value="1" min="1" max="20" style="max-width:120px;" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Find Compatible Units</button>
+        </form>
+      </div>
+
+      <div id="compatResults" hidden>
+        <div class="card">
+          <h2>Compatible Units Available</h2>
+          <div id="shortageWarning" class="alert" role="alert"></div>
+          <div class="compat-grid" id="compatGrid"></div>
+          <div class="table-wrap" style="margin-top:1.25rem;">
+            <table>
+              <thead><tr><th>Unit ID</th><th>Blood Type</th><th>Expiry Date</th><th>Action</th></tr></thead>
+              <tbody id="compatUnitsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Record Transfusion ─────────────────────────────────────────────── -->
+    <section id="tab-transfusion" class="tab-panel">
+      <h1>Record Transfusion</h1>
+      <div id="transfusionAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <form id="transfusionForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="txPatient">Patient Identifier</label>
+              <input type="text" id="txPatient" placeholder="e.g. KNH-PAT-00123" required />
+            </div>
+            <div class="form-group">
+              <label for="txUnitId">Blood Unit ID</label>
+              <input type="number" id="txUnitId" min="1" required placeholder="Unit ID from compatibility check" />
+            </div>
+          </div>
+          <div id="txUnitInfo" class="alert" role="status"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="verifyUnitBtn" style="margin-bottom:1rem;">Verify Unit</button>
+          <br/>
+          <button type="submit" class="btn btn-primary">Confirm Transfusion</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ── Transfusion History ────────────────────────────────────────────── -->
+    <section id="tab-history" class="tab-panel">
+      <h1>Transfusion History</h1>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Blood Unit</th><th>Patient</th><th>Date</th><th>Staff ID</th></tr></thead>
+            <tbody id="historyBody">
+              <tr><td colspan="5" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Inventory View ─────────────────────────────────────────────────── -->
+    <section id="tab-inventory" class="tab-panel">
+      <h1>Blood Inventory</h1>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="invTotal">—</span>
+          <span class="stat-label">Total Available Units</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="invLow">—</span>
+          <span class="stat-label">Low Stock Types</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="invExpiring">—</span>
+          <span class="stat-label">Expiring in 7 Days</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Blood Type</th><th>Available Units</th><th>Status</th></tr></thead>
+            <tbody id="inventoryBody">
+              <tr><td colspan="3" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Donor Lookup ───────────────────────────────────────────────────── -->
+    <section id="tab-donors" class="tab-panel">
+      <h1>Donor Lookup</h1>
+      <div id="donorLookupAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;">
+          <input type="text" id="donorLookupSearch" placeholder="Search by name or national ID…" style="max-width:320px;" />
+          <button class="btn btn-primary btn-sm" id="donorLookupBtn">Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Blood Type</th><th>Last Donation</th><th>Eligibility</th></tr></thead>
+            <tbody id="donorLookupBody">
+              <tr><td colspan="5" class="empty-row">Enter a search term above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── My Notifications ──────────────────────────────────────────────── -->
+    <section id="tab-mynotifs" class="tab-panel">
+      <h1>My Notifications</h1>
+      <div id="myNotifAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+          <input type="text" id="myNotifSearch" placeholder="Filter by keyword…" style="max-width:280px;" />
+          <button class="btn btn-primary btn-sm" id="myNotifSearchBtn">Filter</button>
+          <button class="btn btn-secondary btn-sm" id="myNotifClearBtn">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="myNotifRefreshBtn" style="margin-left:auto;">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Message</th><th>Sent At</th><th>Status</th></tr></thead>
+            <tbody id="myNotifBody">
+              <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<script>
+// ── Always send session cookie with every API request ─────────────────────────
+const _fetch = window.fetch;
+window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+if (!sessionStorage.getItem('staff_id')) { window.location.href = 'index.html'; }
+document.getElementById('navRole').textContent = sessionStorage.getItem('role') || '';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showAlert(id, msg, type) {
+  const el=document.getElementById(id); if(!el) return;
+  el.textContent=msg; el.className='alert show alert-'+type;
+}
+function hideAlert(id) { const el=document.getElementById(id); if(el) el.className='alert'; }
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.doc-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.doc-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('api/auth.php', { method:'DELETE' });
+  sessionStorage.clear(); window.location.href = 'index.html';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOOD REQUESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const reqStatusColors = { pending:'badge-warning', allocated:'badge-success', completed:'badge-success', cancelled:'badge-danger' };
+
+async function loadRequests() {
+  const tbody = document.getElementById('reqBody');
+  const res   = await fetch('api/blood_requests.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('reqAlert', data.error||'Failed to load requests.','error'); return; }
+  if (!Array.isArray(data)||!data.length) {
+    tbody.innerHTML='<tr><td colspan="8" class="empty-row">No requests submitted yet.</td></tr>'; return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${esc(String(r.id))}</td>
+      <td>${esc(r.patient_identifier)}</td>
+      <td><span class="badge badge-danger">${esc(r.blood_type)}</span></td>
+      <td>${esc(String(r.quantity))}</td>
+      <td>${r.priority==='emergency'?'<span class="badge badge-danger">Emergency</span>':'<span class="badge badge-warning">Normal</span>'}</td>
+      <td><span class="badge ${reqStatusColors[r.status]||'badge-warning'}">${esc(r.status)}</span></td>
+      <td>${esc((r.created_at||'').split(' ')[0])}</td>
+      <td>${r.status==='pending'?`<button class="btn btn-sm" style="background:#dc3545;color:#fff;" onclick="cancelRequest(${r.id})">Cancel</button>`:'—'}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('bloodRequestForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('reqAlert');
+  const body = {
+    patient_identifier: document.getElementById('reqPatient').value.trim(),
+    blood_type:         document.getElementById('reqBloodType').value,
+    quantity:           parseInt(document.getElementById('reqQty').value),
+    priority:           document.getElementById('reqPriority').value,
+    notes:              document.getElementById('reqNotes').value.trim(),
+  };
+  const res  = await fetch('api/blood_requests.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('reqAlert', data.error||'Failed to submit request.','error'); return; }
+  showAlert('reqAlert','Request submitted. ID: '+data.request_id,'success');
+  e.target.reset(); loadRequests();
+});
+
+async function cancelRequest(id) {
+  if (!confirm('Cancel this blood request?')) return;
+  const res  = await fetch('api/blood_requests.php?id='+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'cancelled'}) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('reqAlert', data.error||'Failed.','error'); return; }
+  showAlert('reqAlert','Request cancelled.','success'); loadRequests();
+}
+
+document.getElementById('refreshReqBtn').addEventListener('click', loadRequests);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPATIBILITY CHECK
+// ═══════════════════════════════════════════════════════════════════════════════
+document.getElementById('compatForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('compatAlert');
+  const bt  = document.getElementById('patientBloodType').value;
+  const qty = document.getElementById('requestedUnits').value;
+  const pid = document.getElementById('patientId').value.trim();
+
+  const res  = await fetch(`api/blood_units.php?patient_blood_type=${encodeURIComponent(bt)}&requested=${qty}`);
+  const data = await res.json();
+
+  if (!res.ok) { showAlert('compatAlert', data.error || 'Search failed.', 'error'); return; }
+
+  const units    = data.units    || [];
+  const shortage = data.shortage || false;
+
+  document.getElementById('compatResults').hidden = false;
+
+  const warn = document.getElementById('shortageWarning');
+  if (shortage) {
+    warn.textContent = `Warning: Only ${units.length} compatible unit(s) available — ${qty} requested.`;
+    warn.className   = 'alert show alert-error';
+  } else {
+    warn.className = 'alert';
+  }
+
+  // Summary grid by blood type
+  const typeCounts = {};
+  units.forEach(u => { typeCounts[u.blood_type] = (typeCounts[u.blood_type]||0)+1; });
+  const grid = document.getElementById('compatGrid');
+  grid.innerHTML = Object.entries(typeCounts).map(([bt, cnt]) => `
+    <div class="compat-card available">
+      <div class="compat-type">${esc(bt)}</div>
+      <div class="compat-count">${cnt} unit${cnt>1?'s':''}</div>
+    </div>`).join('') || '<p style="color:#888;">No compatible units available.</p>';
+
+  // Units table with "Use this unit" button that pre-fills transfusion form
+  const tbody = document.getElementById('compatUnitsBody');
+  if (!units.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No compatible units found.</td></tr>';
+  } else {
+    tbody.innerHTML = units.map(u => `
+      <tr>
+        <td>${esc(String(u.id))}</td>
+        <td>${esc(u.blood_type)}</td>
+        <td>${esc(u.expiry_date)}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="prefillTranfusion(${u.id},'${esc(pid)}')">
+            Use This Unit
+          </button>
+        </td>
+      </tr>`).join('');
+  }
+});
+
+function prefillTranfusion(unitId, patientId) {
+  document.getElementById('txUnitId').value  = unitId;
+  document.getElementById('txPatient').value = patientId;
+  // Switch to transfusion tab
+  document.querySelectorAll('.doc-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="transfusion"]').classList.add('active');
+  document.getElementById('tab-transfusion').classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRANSFUSION
+// ═══════════════════════════════════════════════════════════════════════════════
+document.getElementById('verifyUnitBtn').addEventListener('click', async () => {
+  const unitId = document.getElementById('txUnitId').value;
+  const el     = document.getElementById('txUnitInfo');
+  if (!unitId) { el.textContent='Enter a unit ID.'; el.className='alert show alert-error'; return; }
+
+  const res  = await fetch('api/blood_units.php');
+  const data = await res.json();
+  const unit = Array.isArray(data) ? data.find(u => u.id == unitId) : null;
+
+  if (!unit) { el.textContent='Unit not found.'; el.className='alert show alert-error'; return; }
+
+  if (unit.status !== 'available') {
+    el.textContent = `Unit ${unitId} is ${unit.status} — cannot be used.`;
+    el.className   = 'alert show alert-error';
+  } else {
+    el.textContent = `Unit ${unitId} — Blood Type: ${unit.blood_type} — Expires: ${unit.expiry_date} — AVAILABLE ✓`;
+    el.className   = 'alert show alert-success';
+  }
+});
+
+document.getElementById('transfusionForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('transfusionAlert');
+  const body = {
+    blood_unit_id:      parseInt(document.getElementById('txUnitId').value),
+    patient_identifier: document.getElementById('txPatient').value.trim(),
+  };
+  const res  = await fetch('api/transfusions.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('transfusionAlert', data.error || 'Transfusion failed.', 'error'); return; }
+  showAlert('transfusionAlert', 'Transfusion recorded. ID: ' + data.transfusion_id, 'success');
+  e.target.reset();
+  document.getElementById('txUnitInfo').className = 'alert';
+  loadHistory();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadHistory() {
+  const tbody = document.getElementById('historyBody');
+  const res   = await fetch('api/transfusions.php');
+  const data  = await res.json();
+  if (!res.ok || !data.length) { tbody.innerHTML='<tr><td colspan="5" class="empty-row">No transfusions recorded.</td></tr>'; return; }
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td>${esc(String(t.id))}</td>
+      <td>${esc(String(t.blood_unit_id))}</td>
+      <td>${esc(t.patient_identifier)}</td>
+      <td>${esc(t.transfusion_date)}</td>
+      <td>${esc(String(t.staff_id))}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVENTORY VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadInventory() {
+  const tbody = document.getElementById('inventoryBody');
+  const [invRes, unitsRes] = await Promise.all([fetch('api/inventory.php'), fetch('api/blood_units.php')]);
+  const inventory = await invRes.json();
+  const units     = await unitsRes.json();
+
+  const total = Array.isArray(inventory) ? inventory.reduce((s,r)=>s+parseInt(r.unit_count||0),0) : 0;
+  const low   = Array.isArray(inventory) ? inventory.filter(r=>r.low_stock==1).length : 0;
+  const soon  = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const expiring = Array.isArray(units) ? units.filter(u=>u.status==='available'&&u.expiry_date<=soon&&u.expiry_date>=today).length : 0;
+
+  document.getElementById('invTotal').textContent    = total;
+  document.getElementById('invLow').textContent      = low;
+  document.getElementById('invExpiring').textContent = expiring;
+
+  if (Array.isArray(inventory)) {
+    tbody.innerHTML = inventory.map(r => `
+      <tr class="${r.low_stock==1?(r.unit_count==0?'critical-stock':'low-stock'):''}">
+        <td><strong>${esc(r.blood_type)}</strong></td>
+        <td>${esc(String(r.unit_count))}</td>
+        <td>${r.low_stock==1?'<span class="badge badge-danger">Low</span>':'<span class="badge badge-success">OK</span>'}</td>
+      </tr>`).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DONOR LOOKUP
+// ═══════════════════════════════════════════════════════════════════════════════
+document.getElementById('donorLookupBtn').addEventListener('click', async () => {
+  const q = document.getElementById('donorLookupSearch').value.trim();
+  if (!q) return;
+  const tbody = document.getElementById('donorLookupBody');
+  const res   = await fetch('api/donors.php?search=' + encodeURIComponent(q));
+  const data  = await res.json();
+  if (!res.ok) { showAlert('donorLookupAlert', data.error||'Search failed.','error'); return; }
+  if (!data.length) { tbody.innerHTML='<tr><td colspan="5" class="empty-row">No donors found.</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(d => {
+    const lastDon = d.last_donation_date;
+    let eligHtml;
+    if (d.medical_history_flag==1) {
+      eligHtml = '<span class="badge badge-danger">Ineligible</span>';
+    } else if (lastDon) {
+      const days = Math.floor((Date.now()-new Date(lastDon))/86400000);
+      eligHtml = days>=56 ? '<span class="badge badge-success">Eligible</span>'
+        : `<span class="badge badge-warning">${56-days}d left</span>`;
+    } else {
+      eligHtml = '<span class="badge badge-success">Eligible</span>';
+    }
+    return `<tr>
+      <td>${esc(String(d.id))}</td>
+      <td>${esc(d.name)}</td>
+      <td><span class="badge badge-danger">${esc(d.blood_type)}</span></td>
+      <td>${esc(d.last_donation_date||'—')}</td>
+      <td>${eligHtml}</td>
+    </tr>`;
+  }).join('');
+});
+
+document.getElementById('donorLookupSearch').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('donorLookupBtn').click();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MY NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadMyNotifications(search = '') {
+  const tbody = document.getElementById('myNotifBody');
+  const url   = search
+    ? 'api/staff_notifications.php?search=' + encodeURIComponent(search)
+    : 'api/staff_notifications.php';
+  const res  = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) { showAlert('myNotifAlert', data.error || 'Failed to load notifications.', 'error'); return; }
+  if (!Array.isArray(data) || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No notifications yet.</td></tr>'; return;
+  }
+  const statusMap = { sent:'badge-success', failed:'badge-danger', pending:'badge-warning' };
+  tbody.innerHTML = data.map(n => `
+    <tr>
+      <td>${esc(String(n.id))}</td>
+      <td>${esc(n.message)}</td>
+      <td>${esc(n.sent_at)}</td>
+      <td><span class="badge ${statusMap[n.delivery_status]||'badge-warning'}">${esc(n.delivery_status)}</span></td>
+    </tr>`).join('');
+}
+
+document.getElementById('myNotifSearchBtn').addEventListener('click', () => {
+  loadMyNotifications(document.getElementById('myNotifSearch').value.trim());
+});
+document.getElementById('myNotifClearBtn').addEventListener('click', () => {
+  document.getElementById('myNotifSearch').value = '';
+  loadMyNotifications();
+});
+document.getElementById('myNotifRefreshBtn').addEventListener('click', () => loadMyNotifications());
+document.getElementById('myNotifSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadMyNotifications(e.target.value.trim());
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadRequests();
+loadHistory();
+loadInventory();
+loadMyNotifications();
+</script>
+
+</body>
+</html>

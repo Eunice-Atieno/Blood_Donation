@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Admin Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .admin-layout { display:flex; min-height:calc(100vh - 48px); }
+    .admin-sidebar {
+      width:220px; min-width:180px; background:#1a1a2e; color:#e0e0e0;
+      display:flex; flex-direction:column; padding:1rem 0;
+      position:sticky; top:0; height:calc(100vh - 48px); overflow-y:auto;
+    }
+    .admin-sidebar .sidebar-brand {
+      font-size:0.78rem; font-weight:700; letter-spacing:.08em;
+      color:#aaa; padding:0 1rem 1rem; border-bottom:1px solid #2e2e4e;
+      margin-bottom:.5rem; text-transform:uppercase;
+    }
+    .admin-tab-btn {
+      background:none; border:none; text-align:left; width:100%;
+      padding:.65rem 1rem; font-size:.88rem; color:#ccc; cursor:pointer;
+      transition:background .15s,color .15s;
+    }
+    .admin-tab-btn:hover { background:#16213e; color:#fff; }
+    .admin-tab-btn.active { background:#4a90d9; color:#fff; font-weight:700; }
+    .admin-main { flex:1; padding:2rem; overflow-y:auto; }
+    .tab-panel { display:none; } .tab-panel.active { display:block; }
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .stat-card { background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.07);
+      padding:1.25rem; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
+    .stat-value { font-size:1.8rem; font-weight:700; color:#1a1a2e; }
+    .stat-label { font-size:.78rem; color:#888; text-align:center; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .empty-row { text-align:center; color:#888; padding:1.5rem 0; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .modal-overlay[hidden] { display:none; }
+    .modal-box { background:#fff; border-radius:10px; padding:2rem; width:100%;
+      max-width:460px; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+    .modal-box h2 { margin-bottom:1.25rem; }
+    .role-badge-Administrator { background:#4a90d9; color:#fff; }
+    .role-badge-Doctor        { background:#6f42c1; color:#fff; }
+    .role-badge-Lab_Technician{ background:#fd7e14; color:#fff; }
+    @media(max-width:768px){
+      .admin-layout{flex-direction:column;}
+      .admin-sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:.5rem;}
+      .admin-tab-btn{width:auto;padding:.45rem .75rem;font-size:.8rem;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .form-row{grid-template-columns:1fr;}
+    }
+    @media(max-width:480px){ .stats-row{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">KNH BDMS — Admin</span>
+  <span id="navRole" style="color:#aaa;font-size:.85rem;padding:.75rem .5rem;"></span>
+  <button class="btn btn-secondary btn-sm" id="logoutBtn" style="margin:.5rem 1rem .5rem auto;">Sign Out</button>
+</nav>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">Administration</div>
+    <button class="admin-tab-btn active" data-tab="overview">📊 Overview</button>
+    <button class="admin-tab-btn"        data-tab="users">👥 User Management</button>
+    <button class="admin-tab-btn"        data-tab="donors">🩸 Donors</button>
+    <button class="admin-tab-btn"        data-tab="inventory">📦 Inventory</button>
+    <button class="admin-tab-btn"        data-tab="transfusions">💉 Transfusions</button>
+    <button class="admin-tab-btn"        data-tab="notifications">🔔 Notifications</button>
+  </aside>
+
+  <main class="admin-main">
+
+    <!-- ── Overview ─────────────────────────────────────────────────────── -->
+    <section id="tab-overview" class="tab-panel active">
+      <h1>System Overview</h1>
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="statStaff">—</span>
+          <span class="stat-label">Staff Accounts</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statDonors">—</span>
+          <span class="stat-label">Registered Donors</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statUnits">—</span>
+          <span class="stat-label">Available Units</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statTransfusions">—</span>
+          <span class="stat-label">Total Transfusions</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Blood Inventory Summary</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Blood Type</th><th>Units Available</th><th>Status</th></tr></thead>
+            <tbody id="overviewInventory">
+              <tr><td colspan="3" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Recent Transfusions</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Patient</th><th>Blood Unit</th><th>Date</th></tr></thead>
+            <tbody id="overviewTransfusions">
+              <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── User Management ───────────────────────────────────────────────── -->
+    <section id="tab-users" class="tab-panel">
+      <h1>User Management</h1>
+      <div id="usersAlert" class="alert" role="alert"></div>
+
+      <div class="card">
+        <h2>Create Staff Account</h2>
+        <form id="createUserForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newUsername">Username</label>
+              <input type="text" id="newUsername" required
+                     pattern="[A-Za-z ]+"
+                     title="Username must contain letters only (no numbers or symbols)" />
+            </div>
+            <div class="form-group">
+              <label for="newRole">Role</label>
+              <select id="newRole">
+                <option value="Administrator">Administrator</option>
+                <option value="Doctor" selected>Doctor</option>
+                <option value="Lab_Technician">Lab Technician</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="newEmail">Email Address <span style="font-weight:400;color:#888;">(used for notifications)</span></label>
+            <input type="email" id="newEmail" placeholder="e.g. doctor@knh.go.ke" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newPassword">Password</label>
+              <input type="password" id="newPassword" minlength="8" required />
+            </div>
+            <div class="form-group">
+              <label for="newPasswordConfirm">Confirm Password</label>
+              <input type="password" id="newPasswordConfirm" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Create Account</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>All Staff Accounts</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="usersBody">
+              <tr><td colspan="7" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit user modal -->
+    <div id="editUserModal" class="modal-overlay" hidden>
+      <div class="modal-box">
+        <h2>Edit Staff Account</h2>
+        <div id="editUserAlert" class="alert" role="alert"></div>
+        <form id="editUserForm">
+          <input type="hidden" id="editUserId" />
+          <div class="form-group">
+            <label for="editRole">Role</label>
+            <select id="editRole">
+              <option value="Administrator">Administrator</option>
+              <option value="Doctor">Doctor</option>
+              <option value="Lab_Technician">Lab Technician</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editEmail">Email Address <span style="font-weight:400;color:#888;">(used for notifications)</span></label>
+            <input type="email" id="editEmail" placeholder="e.g. doctor@knh.go.ke" />
+          </div>
+          <div class="form-group">
+            <label for="editPassword">New Password <span style="font-weight:400;color:#888;">(leave blank to keep current)</span></label>
+            <input type="password" id="editPassword" minlength="8" />
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="editLocked" />
+            <label for="editLocked">Account locked / disabled</label>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1rem;">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-secondary" id="closeEditModal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <!-- ── Donors ────────────────────────────────────────────────────────── -->
+    <section id="tab-donors" class="tab-panel">
+      <h1>Donor Management</h1>
+      <div id="donorsAlert" class="alert" role="alert"></div>
+      <div class="card">
+        <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;">
+          <input type="text" id="donorSearch" placeholder="Search by name or national ID…" style="max-width:320px;" />
+          <button class="btn btn-primary btn-sm" id="donorSearchBtn">Search</button>
+          <button class="btn btn-secondary btn-sm" id="donorSearchClear">Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Blood Type</th><th>Email</th><th>Phone</th><th>Last Donation</th><th>Flag</th></tr></thead>
+            <tbody id="donorsBody">
+              <tr><td colspan="7" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Inventory ─────────────────────────────────────────────────────── -->
+    <section id="tab-inventory" class="tab-panel">
+      <h1>Blood Inventory</h1>
+      <div id="inventoryAlert" class="alert" role="alert"></div>
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem;">
+        <button class="btn btn-primary btn-sm" id="expireUnitsBtn">Run Expiry Check</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Blood Type</th><th>Available Units</th><th>Low Stock</th><th>Last Updated</th></tr></thead>
+            <tbody id="inventoryBody">
+              <tr><td colspan="4" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Blood Units Detail</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Unit ID</th><th>Donor ID</th><th>Blood Type</th><th>Collected</th><th>Expires</th><th>Status</th></tr></thead>
+            <tbody id="unitsBody">
+              <tr><td colspan="6" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Transfusions ──────────────────────────────────────────────────── -->
+    <section id="tab-transfusions" class="tab-panel">
+      <h1>Transfusion Records</h1>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Blood Unit</th><th>Patient</th><th>Date</th><th>Staff ID</th></tr></thead>
+            <tbody id="transfusionsBody">
+              <tr><td colspan="5" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Notifications ─────────────────────────────────────────────────── -->
+    <section id="tab-notifications" class="tab-panel">
+      <h1>Notifications</h1>
+      <div id="notifAlert" class="alert" role="alert"></div>
+
+      <!-- ── Broadcast to All Donors ── -->
+      <div class="card">
+        <h2>📢 Broadcast to All Donors</h2>
+
+        <!-- Emergency Appeal -->
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="font-size:.95rem;margin-bottom:.75rem;color:#c0392b;">🚨 Emergency Blood Appeal</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="emergencyBloodType">Blood Type Needed</label>
+              <select id="emergencyBloodType">
+                <option value="">— Select —</option>
+                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="emergencyMsg">Custom Message (optional)</label>
+            <textarea id="emergencyMsg" rows="2" placeholder="Add any extra details…" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-size:.9rem;"></textarea>
+          </div>
+          <button class="btn btn-sm" style="background:#c0392b;color:#fff;" id="sendEmergencyBtn">🚨 Send Emergency Appeal</button>
+        </div>
+
+        <!-- Eligibility Update -->
+        <div style="border-top:1px solid #eee;padding-top:1.25rem;">
+          <h3 style="font-size:.95rem;margin-bottom:.5rem;color:#28a745;">✅ Eligibility Updates</h3>
+          <p style="font-size:.85rem;color:#666;margin-bottom:.75rem;">
+            Sends an email to all donors who became eligible to donate again today (56-day rule).
+          </p>
+          <button class="btn btn-sm" style="background:#28a745;color:#fff;" id="sendEligibilityBtn">✅ Send Eligibility Updates</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Send Notification</h2>
+
+        <!-- Recipient type toggle -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;">
+          <button type="button" class="btn btn-primary btn-sm" id="notifTypeDonor" onclick="switchNotifType('donor')">Donor</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="notifTypeStaff" onclick="switchNotifType('staff')">Staff</button>
+        </div>
+
+        <!-- Donor form -->
+        <form id="sendNotifDonorForm">
+          <div class="form-group" style="position:relative;">
+            <label for="notifDonorSearch">Donor Name</label>
+            <input type="text" id="notifDonorSearch" placeholder="Type donor name…" autocomplete="off" />
+            <ul id="notifDonorResults" style="position:absolute;z-index:100;background:#fff;border:1px solid #ddd;border-radius:6px;width:100%;max-height:200px;overflow-y:auto;margin:0;padding:0;list-style:none;display:none;"></ul>
+            <input type="hidden" id="notifDonorId" />
+            <small id="notifDonorSelected" style="color:#28a745;font-weight:600;"></small>
+          </div>
+          <div class="form-group">
+            <label for="notifMsgType">Message Type</label>
+            <select id="notifMsgType">
+              <option value="eligibility_reminder">Eligibility Reminder</option>
+              <option value="low_stock_alert">Low Stock Alert</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Send to Donor</button>
+        </form>
+
+        <!-- Staff form -->
+        <form id="sendNotifStaffForm" style="display:none;">
+          <div class="form-group" style="position:relative;">
+            <label for="notifStaffSearch">Staff Name</label>
+            <input type="text" id="notifStaffSearch" placeholder="Type staff username…" autocomplete="off" />
+            <ul id="notifStaffResults" style="position:absolute;z-index:100;background:#fff;border:1px solid #ddd;border-radius:6px;width:100%;max-height:200px;overflow-y:auto;margin:0;padding:0;list-style:none;display:none;"></ul>
+            <input type="hidden" id="notifStaffId" />
+            <small id="notifStaffSelected" style="color:#28a745;font-weight:600;"></small>
+          </div>
+          <div class="form-group">
+            <label for="notifStaffMsg">Message</label>
+            <textarea id="notifStaffMsg" rows="3" placeholder="Enter your message…" style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;font-size:.9rem;" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Send to Staff</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;">
+          <h2 style="margin:0;">Notification History</h2>
+          <button class="btn btn-secondary btn-sm" id="notifHistDonor" onclick="switchNotifHistory('donor')" style="margin-left:auto;">Donors</button>
+          <button class="btn btn-secondary btn-sm" id="notifHistStaff" onclick="switchNotifHistory('staff')">Staff</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="notifTableHead">
+              <tr><th>ID</th><th>Recipient</th><th>Type / Message</th><th>Sent At</th><th>Status</th></tr>
+            </thead>
+            <tbody id="notifBody">
+              <tr><td colspan="5" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<script>
+// ── Always send session cookie with every API request ─────────────────────────
+const _fetch = window.fetch;
+window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+const role = sessionStorage.getItem('role');
+if (!sessionStorage.getItem('staff_id')) { window.location.href = 'index.html'; }
+document.getElementById('navRole').textContent = role || '';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg; el.className = 'alert show alert-' + type;
+}
+function hideAlert(id) { const el = document.getElementById(id); if (el) el.className = 'alert'; }
+
+function statusBadge(s) {
+  const map = { available:'badge-success', transfused:'badge-warning', expired:'badge-danger',
+    sent:'badge-success', failed:'badge-danger', pending:'badge-warning' };
+  return `<span class="badge ${map[s]||'badge-warning'}">${esc(s)}</span>`;
+}
+function roleBadge(r) {
+  if (!r) return '<span class="badge badge-warning">No Role</span>';
+  return `<span class="badge role-badge-${esc(r)}">${esc(r.replace('_',' '))}</span>`;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('api/auth.php', { method: 'DELETE' });
+  sessionStorage.clear();
+  window.location.href = 'index.html';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadOverview() {
+  const [staffRes, donorsRes, inventoryRes, transfusionsRes] = await Promise.all([
+    fetch('api/staff.php'),
+    fetch('api/donors.php'),
+    fetch('api/inventory.php'),
+    fetch('api/transfusions.php'),
+  ]);
+
+  const staff        = await staffRes.json();
+  const donors       = await donorsRes.json();
+  const inventory    = await inventoryRes.json();
+  const transfusions = await transfusionsRes.json();
+
+  document.getElementById('statStaff').textContent       = Array.isArray(staff)        ? staff.length        : '—';
+  document.getElementById('statDonors').textContent      = Array.isArray(donors)       ? donors.length       : '—';
+  document.getElementById('statTransfusions').textContent = Array.isArray(transfusions) ? transfusions.length : '—';
+
+  const totalUnits = Array.isArray(inventory)
+    ? inventory.reduce((s, r) => s + parseInt(r.unit_count || 0), 0) : 0;
+  document.getElementById('statUnits').textContent = totalUnits;
+
+  // Inventory summary table
+  const invBody = document.getElementById('overviewInventory');
+  if (Array.isArray(inventory) && inventory.length) {
+    invBody.innerHTML = inventory.map(r => `
+      <tr class="${r.low_stock == 1 ? (r.unit_count == 0 ? 'critical-stock' : 'low-stock') : ''}">
+        <td><strong>${esc(r.blood_type)}</strong></td>
+        <td>${esc(String(r.unit_count))}</td>
+        <td>${r.low_stock == 1 ? '<span class="badge badge-danger">Low</span>' : '<span class="badge badge-success">OK</span>'}</td>
+      </tr>`).join('');
+  } else {
+    invBody.innerHTML = '<tr><td colspan="3" class="empty-row">No inventory data.</td></tr>';
+  }
+
+  // Recent transfusions (last 5)
+  const txBody = document.getElementById('overviewTransfusions');
+  if (Array.isArray(transfusions) && transfusions.length) {
+    txBody.innerHTML = transfusions.slice(0, 5).map(t => `
+      <tr>
+        <td>${esc(String(t.id))}</td>
+        <td>${esc(t.patient_identifier)}</td>
+        <td>${esc(String(t.blood_unit_id))}</td>
+        <td>${esc(t.transfusion_date)}</td>
+      </tr>`).join('');
+  } else {
+    txBody.innerHTML = '<tr><td colspan="4" class="empty-row">No transfusions yet.</td></tr>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadUsers() {
+  const tbody = document.getElementById('usersBody');
+  const res   = await fetch('api/staff.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Failed to load users.', 'error'); return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No staff accounts.</td></tr>'; return; }
+
+  tbody.innerHTML = data.map((u, idx) => `
+    <tr>
+      <td>${esc(u.staff_code || String(idx + 1))}</td>
+      <td>${esc(u.username)}</td>
+      <td>${esc(u.email || '—')}</td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${u.locked == 1
+        ? '<span class="badge badge-danger">Locked</span>'
+        : '<span class="badge badge-success">Active</span>'}</td>
+      <td>${esc(u.created_at ? u.created_at.split(' ')[0] : '')}</td>
+      <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openEditUser(${u.id},${u.role ? `'${esc(u.role)}'` : 'null'},'${esc(u.email||'')}',${u.locked})">Edit</button>
+        ${u.locked == 0
+          ? `<button class="btn btn-sm" style="background:#dc3545;color:#fff;" onclick="disableUser(${u.id})">Disable</button>`
+          : `<button class="btn btn-sm" style="background:#28a745;color:#fff;" onclick="enableUser(${u.id})">Enable</button>`}
+        <button class="btn btn-sm" style="background:#6c1a1a;color:#fff;" onclick="deleteUser(${u.id},'${esc(u.username)}')">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+document.getElementById('createUserForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  hideAlert('usersAlert');
+  const pw       = document.getElementById('newPassword').value;
+  const pw2      = document.getElementById('newPasswordConfirm').value;
+  const username = document.getElementById('newUsername').value.trim();
+
+  if (!/^[A-Za-z ]+$/.test(username)) {
+    showAlert('usersAlert', 'Username must contain letters only (no numbers or symbols).', 'error');
+    return;
+  }
+  if (pw !== pw2) { showAlert('usersAlert', 'Passwords do not match.', 'error'); return; }
+
+  const body = {
+    username: username,
+    role:     document.getElementById('newRole').value,
+    email:    document.getElementById('newEmail').value.trim(),
+    password: pw,
+  };
+  const res  = await fetch('api/staff.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Failed to create account.', 'error'); return; }
+  showAlert('usersAlert', 'Account created successfully.', 'success');
+  e.target.reset();
+  loadUsers();
+});
+
+function openEditUser(id, role, email, locked) {
+  document.getElementById('editUserId').value  = id;
+  document.getElementById('editRole').value    = role || '';
+  document.getElementById('editEmail').value   = email || '';
+  document.getElementById('editLocked').checked = locked == 1;
+  document.getElementById('editPassword').value = '';
+  hideAlert('editUserAlert');
+  document.getElementById('editUserModal').hidden = false;
+}
+
+document.getElementById('closeEditModal').addEventListener('click', () => {
+  document.getElementById('editUserModal').hidden = true;
+});
+
+document.getElementById('editUserForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const id   = document.getElementById('editUserId').value;
+  const body = {
+    role:   document.getElementById('editRole').value,
+    email:  document.getElementById('editEmail').value.trim(),
+    locked: document.getElementById('editLocked').checked ? 1 : 0,
+  };
+  const pw = document.getElementById('editPassword').value;
+  if (pw) body.password = pw;
+
+  const res  = await fetch('api/staff.php?id=' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  document.getElementById('editUserModal').hidden = true;
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Update failed.', 'error'); return; }
+  showAlert('usersAlert', 'Account updated.', 'success');
+  loadUsers();
+});
+
+async function disableUser(id) {
+  if (!confirm('Disable this account?')) return;
+  const res  = await fetch('api/staff.php?id=' + id, { method:'DELETE' });
+  const data = await res.json();
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('usersAlert', 'Account disabled.', 'success');
+  loadUsers();
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`Permanently delete account "${username}"? This cannot be undone.`)) return;
+  const res  = await fetch('api/staff.php?id=' + id + '&action=delete', { method:'DELETE' });
+  const data = await res.json();
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('usersAlert', 'Account deleted.', 'success');
+  loadUsers();
+}
+
+async function enableUser(id) {
+  const res  = await fetch('api/staff.php?id=' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ locked: 0 }) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('usersAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('usersAlert', 'Account enabled.', 'success');
+  loadUsers();
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DONORS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadDonors(search = '') {
+  const tbody = document.getElementById('donorsBody');
+  const url   = search ? 'api/donors.php?search=' + encodeURIComponent(search) : 'api/donors.php';
+  const res   = await fetch(url);
+  const data  = await res.json();
+  if (!res.ok) { showAlert('donorsAlert', data.error || 'Failed to load donors.', 'error'); return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No donors found.</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(d => `
+    <tr>
+      <td>${esc(String(d.id))}</td>
+      <td>${esc(d.name)}</td>
+      <td><span class="badge badge-danger">${esc(d.blood_type)}</span></td>
+      <td>${esc(d.email)}</td>
+      <td>${esc(d.phone)}</td>
+      <td>${esc(d.last_donation_date || '—')}</td>
+      <td>${d.medical_history_flag == 1 ? '<span class="badge badge-danger">Flagged</span>' : '<span class="badge badge-success">Clear</span>'}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('donorSearchBtn').addEventListener('click', () => {
+  loadDonors(document.getElementById('donorSearch').value.trim());
+});
+document.getElementById('donorSearchClear').addEventListener('click', () => {
+  document.getElementById('donorSearch').value = '';
+  loadDonors();
+});
+document.getElementById('donorSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadDonors(e.target.value.trim());
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadInventory() {
+  const tbody = document.getElementById('inventoryBody');
+  const res   = await fetch('api/inventory.php');
+  const data  = await res.json();
+  if (!res.ok) { showAlert('inventoryAlert', data.error || 'Failed.', 'error'); return; }
+
+  tbody.innerHTML = data.map(r => `
+    <tr class="${r.low_stock == 1 ? (r.unit_count == 0 ? 'critical-stock' : 'low-stock') : ''}">
+      <td><strong>${esc(r.blood_type)}</strong></td>
+      <td>${esc(String(r.unit_count))}</td>
+      <td>${r.low_stock == 1 ? '<span class="badge badge-danger">Low</span>' : '<span class="badge badge-success">OK</span>'}</td>
+      <td>${esc(r.updated_at || '—')}</td>
+    </tr>`).join('');
+}
+
+async function loadBloodUnits() {
+  const tbody = document.getElementById('unitsBody');
+  const res   = await fetch('api/blood_units.php');
+  const data  = await res.json();
+  if (!res.ok || !Array.isArray(data)) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Unavailable.</td></tr>'; return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No blood units recorded.</td></tr>'; return; }
+
+  const today = new Date().toISOString().split('T')[0];
+  const soon  = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+
+  tbody.innerHTML = data.map(u => {
+    const expiring = u.status === 'available' && u.expiry_date <= soon && u.expiry_date >= today;
+    return `<tr class="${expiring ? 'low-stock' : ''}">
+      <td>${esc(String(u.id))}</td>
+      <td>${esc(String(u.donor_id))}</td>
+      <td>${esc(u.blood_type)}</td>
+      <td>${esc(u.collection_date)}</td>
+      <td>${esc(u.expiry_date)}${expiring ? ' <span class="badge badge-warning">Expiring</span>' : ''}</td>
+      <td>${statusBadge(u.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('expireUnitsBtn').addEventListener('click', async () => {
+  const res  = await fetch('api/inventory.php', { method:'PUT', headers:{'Content-Type':'application/json'}, body:'{}' });
+  const data = await res.json();
+  if (!res.ok) { showAlert('inventoryAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('inventoryAlert', 'Expiry check complete. Inventory updated.', 'success');
+  loadInventory(); loadBloodUnits();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRANSFUSIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadTransfusions() {
+  const tbody = document.getElementById('transfusionsBody');
+  const res   = await fetch('api/transfusions.php');
+  const data  = await res.json();
+  if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Unavailable.</td></tr>'; return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No transfusions recorded.</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td>${esc(String(t.id))}</td>
+      <td>${esc(String(t.blood_unit_id))}</td>
+      <td>${esc(t.patient_identifier)}</td>
+      <td>${esc(t.transfusion_date)}</td>
+      <td>${esc(String(t.staff_id))}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+let notifCurrentType = 'donor';
+let notifHistType    = 'donor';
+
+function switchNotifType(type) {
+  notifCurrentType = type;
+  document.getElementById('sendNotifDonorForm').style.display = type === 'donor' ? '' : 'none';
+  document.getElementById('sendNotifStaffForm').style.display = type === 'staff' ? '' : 'none';
+  document.getElementById('notifTypeDonor').className = 'btn btn-sm ' + (type === 'donor' ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('notifTypeStaff').className = 'btn btn-sm ' + (type === 'staff' ? 'btn-primary' : 'btn-secondary');
+}
+
+function switchNotifHistory(type) {
+  notifHistType = type;
+  document.getElementById('notifHistDonor').className = 'btn btn-sm ' + (type === 'donor' ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('notifHistStaff').className = 'btn btn-sm ' + (type === 'staff' ? 'btn-primary' : 'btn-secondary');
+  loadNotifications();
+}
+
+// Name search autocomplete helper
+function setupNotifSearch(inputId, resultsId, hiddenId, selectedId, recipientType) {
+  const input    = document.getElementById(inputId);
+  const results  = document.getElementById(resultsId);
+  const hidden   = document.getElementById(hiddenId);
+  const selected = document.getElementById(selectedId);
+  let debounce;
+  let selecting = false;
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    hidden.value = '';
+    selected.textContent = '';
+    const q = input.value.trim();
+    if (q.length < 2) { results.style.display = 'none'; return; }
+    debounce = setTimeout(async () => {
+      const res  = await fetch(`api/notifications.php?search=${encodeURIComponent(q)}&recipient_type=${recipientType}`);
+      const data = await res.json();
+      if (!Array.isArray(data) || !data.length) { results.style.display = 'none'; return; }
+      results.innerHTML = '';
+      data.forEach(r => {
+        const li = document.createElement('li');
+        li.style.cssText = 'padding:.5rem .75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;';
+        li.innerHTML = recipientType === 'staff'
+          ? `${esc(r.name)} <span style="color:#888;font-size:.8rem;">(${esc(r.role)})</span>`
+          : `${esc(r.name)} <span style="color:#888;font-size:.8rem;">${esc(r.email)}</span>`;
+        // Use mousedown so it fires before blur hides the list
+        li.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          selecting = true;
+          hidden.value          = r.id;
+          input.value           = r.name;
+          selected.textContent  = '✓ ' + r.name + ' selected';
+          results.style.display = 'none';
+          selecting = false;
+        });
+        results.appendChild(li);
+      });
+      results.style.display = 'block';
+    }, 250);
+  });
+
+  input.addEventListener('blur', () => {
+    if (!selecting) setTimeout(() => { results.style.display = 'none'; }, 150);
+  });
+}
+
+setupNotifSearch('notifDonorSearch', 'notifDonorResults', 'notifDonorId', 'notifDonorSelected', 'donor');
+setupNotifSearch('notifStaffSearch', 'notifStaffResults', 'notifStaffId', 'notifStaffSelected', 'staff');
+
+async function loadNotifications() {
+  const tbody = document.getElementById('notifBody');
+  const res   = await fetch('api/notifications.php?type=' + notifHistType);
+  const data  = await res.json();
+  if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Unavailable.</td></tr>'; return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No notifications sent.</td></tr>'; return; }
+
+  tbody.innerHTML = data.map(n => `
+    <tr>
+      <td>${esc(String(n.id))}</td>
+      <td>${esc(n.recipient_name)}</td>
+      <td>${esc(notifHistType === 'staff' ? n.message : (n.message_type||'').replace(/_/g,' '))}</td>
+      <td>${esc(n.sent_at)}</td>
+      <td>${statusBadge(n.delivery_status)}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('sendNotifDonorForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('notifAlert');
+  const donorId = document.getElementById('notifDonorId').value;
+  if (!donorId) { showAlert('notifAlert', 'Please select a donor from the search results.', 'error'); return; }
+  const body = {
+    recipient_type: 'donor',
+    donor_id:       parseInt(donorId),
+    message_type:   document.getElementById('notifMsgType').value,
+  };
+  const res  = await fetch('api/notifications.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('notifAlert', data.error || 'Failed to send.', 'error'); return; }
+  const msg = data.note ? 'Notification saved (email unavailable).' : 'Notification sent to donor.';
+  showAlert('notifAlert', msg, data.note ? 'warning' : 'success');
+  e.target.reset();
+  document.getElementById('notifDonorSelected').textContent = '';
+  loadNotifications();
+});
+
+document.getElementById('sendNotifStaffForm').addEventListener('submit', async e => {
+  e.preventDefault(); hideAlert('notifAlert');
+  const staffId = document.getElementById('notifStaffId').value;
+  const message = document.getElementById('notifStaffMsg').value.trim();
+  if (!staffId) { showAlert('notifAlert', 'Please select a staff member from the search results.', 'error'); return; }
+  if (!message) { showAlert('notifAlert', 'Please enter a message.', 'error'); return; }
+  const body = { recipient_type: 'staff', staff_id: parseInt(staffId), message };
+  const res  = await fetch('api/notifications.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { showAlert('notifAlert', data.error || 'Failed to send.', 'error'); return; }
+  showAlert('notifAlert', 'Notification sent to staff.', 'success');
+  e.target.reset();
+  document.getElementById('notifStaffSelected').textContent = '';
+  loadNotifications();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+loadOverview();
+loadUsers();
+loadDonors();
+loadInventory();
+loadBloodUnits();
+loadTransfusions();
+loadNotifications();
+
+// ── Broadcast buttons ─────────────────────────────────────────────────────────
+document.getElementById('sendEmergencyBtn').addEventListener('click', async () => {
+  hideAlert('notifAlert');
+  const bloodType = document.getElementById('emergencyBloodType').value;
+  const message   = document.getElementById('emergencyMsg').value.trim();
+  if (!bloodType) { showAlert('notifAlert', 'Please select a blood type.', 'error'); return; }
+
+  const btn = document.getElementById('sendEmergencyBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const res  = await fetch('api/broadcast.php', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action: 'emergency', blood_type: bloodType, message }),
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '🚨 Send Emergency Appeal';
+  if (!res.ok) { showAlert('notifAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('notifAlert', data.message, 'success');
+  document.getElementById('emergencyMsg').value = '';
+});
+
+document.getElementById('sendEligibilityBtn').addEventListener('click', async () => {
+  hideAlert('notifAlert');
+  const btn = document.getElementById('sendEligibilityBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const res  = await fetch('api/broadcast.php', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action: 'eligibility' }),
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '✅ Send Eligibility Updates';
+  if (!res.ok) { showAlert('notifAlert', data.error || 'Failed.', 'error'); return; }
+  showAlert('notifAlert', data.message, 'success');
+});
+</script>
+
+</body>
+</html>

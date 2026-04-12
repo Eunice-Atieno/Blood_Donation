@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Inventory Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">KNH BDMS</span>
+  <a href="index.html">Login</a>
+  <a href="register_donor.html">Register Donor</a>
+  <a href="donor_portal.html">Donor Portal</a>
+  <a href="inventory_dashboard.html" class="active">Inventory</a>
+  <a href="transfusion_form.html">Transfusion</a>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
+      <h1 style="margin-bottom:0;">Blood Inventory</h1>
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+        <span id="lastUpdated" style="font-size:0.82rem;color:#666;"></span>
+        <button class="btn btn-secondary btn-sm" id="refreshBtn">Refresh Now</button>
+      </div>
+    </div>
+
+    <div id="alert" class="alert" role="alert"></div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.82rem;">
+      <span><span class="badge badge-danger">●</span> Critical / Low Stock (&lt;10 units)</span>
+      <span><span class="badge badge-success">●</span> Adequate Stock (≥10 units)</span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="inventoryTable">
+        <thead>
+          <tr>
+            <th>Blood Type</th>
+            <th>Available Units</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody">
+          <tr><td colspan="3" style="text-align:center;color:#888;">Loading inventory…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:1rem;font-size:0.8rem;color:#888;">
+      Auto-refreshes every 30 seconds. Rows highlighted in red indicate low stock (&lt;10 units).
+    </p>
+  </div>
+</div>
+
+<script>
+  const inventoryBody = document.getElementById('inventoryBody');
+  const alertBox      = document.getElementById('alert');
+  const lastUpdated   = document.getElementById('lastUpdated');
+  const refreshBtn    = document.getElementById('refreshBtn');
+
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className   = 'alert show alert-' + type;
+  }
+
+  function hideAlert() { alertBox.className = 'alert'; }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  async function loadInventory() {
+    refreshBtn.disabled    = true;
+    refreshBtn.textContent = 'Refreshing…';
+    hideAlert();
+
+    try {
+      const res  = await fetch('api/inventory.php');
+      const data = await res.json();
+
+      if (!res.ok) {
+        showAlert(data.error || 'Failed to load inventory.', 'error');
+        return;
+      }
+
+      const items = Array.isArray(data) ? data : (data.inventory || []);
+      renderInventory(items);
+      lastUpdated.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    } catch (err) {
+      showAlert('Network error. Could not load inventory.', 'error');
+    } finally {
+      refreshBtn.disabled    = false;
+      refreshBtn.textContent = 'Refresh Now';
+    }
+  }
+
+  function renderInventory(items) {
+    if (!items.length) {
+      inventoryBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#888;">No inventory data available.</td></tr>';
+      return;
+    }
+
+    inventoryBody.innerHTML = '';
+
+    items.forEach(item => {
+      const count    = parseInt(item.unit_count, 10);
+      const isLow    = item.low_stock == 1 || count < 10;
+      const tr       = document.createElement('tr');
+
+      if (isLow) tr.classList.add('critical-stock');
+
+      const badge = isLow
+        ? '<span class="badge badge-danger">Low Stock</span>'
+        : '<span class="badge badge-success">Adequate</span>';
+
+      tr.innerHTML = `
+        <td><strong>${escHtml(item.blood_type)}</strong></td>
+        <td>${escHtml(String(count))}</td>
+        <td>${badge}</td>
+      `;
+
+      inventoryBody.appendChild(tr);
+    });
+  }
+
+  // Initial load
+  loadInventory();
+
+  // Auto-refresh every 30 seconds (Requirement 6.6 / 12.5)
+  setInterval(loadInventory, 30000);
+
+  refreshBtn.addEventListener('click', loadInventory);
+</script>
+
+</body>
+</html>

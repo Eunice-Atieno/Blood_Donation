@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Login</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: linear-gradient(135deg, #8b0000 0%, #c0392b 55%, #e74c3c 100%);
+    }
+
+    /* ── Left hero ── */
+    .hero {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2rem; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute;
+      width: 420px; height: 420px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); top: -120px; left: -120px;
+    }
+    .hero::after {
+      content: ''; position: absolute;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); bottom: -80px; right: -80px;
+    }
+    .hero-text { text-align: center; color: #fff; z-index: 1; }
+    .hero-text .donate { font-size: 2rem; font-weight: 300; letter-spacing: .3em; }
+    .hero-text .blood  { font-size: 5rem; font-weight: 900; letter-spacing: .1em; line-height: 1; }
+    .hero-text .save   { font-size: 1.5rem; font-weight: 300; letter-spacing: .3em; margin-top: .5rem; }
+    .blood-drop { margin-top: 2.5rem; z-index: 1; }
+    .blood-drop svg { width: 120px; height: 120px; }
+    .gold-bar {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 18px;
+      background: linear-gradient(180deg, #f0c040, #c8960c);
+    }
+
+    /* ── Right choice panel ── */
+    .choice-panel {
+      width: 440px; min-width: 320px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1.5rem;
+      background: #fff;
+    }
+
+    .choice-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      padding: 2.5rem 2rem; width: 100%;
+    }
+
+    .choice-card h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: .12em;
+      color: #1a1a2e;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+    }
+
+    .choice-btn {
+      display: block; width: 100%;
+      padding: 1rem;
+      margin-bottom: 1.1rem;
+      background: #2980b9;
+      color: #fff; border: none; border-radius: 50px;
+      font-size: 1.05rem; font-weight: 600; cursor: pointer;
+      letter-spacing: .04em;
+      box-shadow: 0 4px 14px rgba(41,128,185,.35);
+      transition: background .2s, transform .1s;
+      text-align: center;
+    }
+    .choice-btn:hover  { background: #1f6391; transform: translateY(-1px); }
+    .choice-btn:active { transform: translateY(0); }
+    .choice-btn:last-child { margin-bottom: 0; }
+
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      .hero { min-height: 200px; padding: 2rem 1rem; }
+      .hero-text .blood { font-size: 3rem; }
+      .gold-bar { display: none; }
+      .choice-panel { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Left hero -->
+<div class="hero">
+  <div class="hero-text">
+    <div class="donate">DONATE</div>
+    <div class="blood">BLOOD</div>
+    <div class="save">SAVE LIFE</div>
+  </div>
+  <div class="blood-drop">
+    <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 5 C50 5 10 55 10 75 A40 40 0 0 0 90 75 C90 55 50 5 50 5Z" fill="white" opacity="0.95"/>
+      <path d="M50 80 C50 80 30 65 30 55 A10 10 0 0 1 50 52 A10 10 0 0 1 70 55 C70 65 50 80 50 80Z" fill="#c0392b"/>
+      <polyline points="32,60 38,60 41,50 44,70 47,55 50,60 53,60 56,52 59,68 62,60 68,60"
+                stroke="#c0392b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="gold-bar"></div>
+</div>
+
+<!-- Right: choice card -->
+<div class="choice-panel">
+  <div class="choice-card">
+    <h2>Login Choice</h2>
+    <button class="choice-btn" onclick="window.location.href='staff_login.html'">Staff Login</button>
+    <button class="choice-btn" onclick="window.location.href='donor_login.html'">Donor Login</button>
+  </div>
+</div>
+
+</body>
+</html>

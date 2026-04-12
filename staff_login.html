@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNH BDMS — Staff Login</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: linear-gradient(135deg, #8b0000 0%, #c0392b 55%, #e74c3c 100%);
+    }
+
+    /* Hero left */
+    .hero {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2rem; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute;
+      width: 420px; height: 420px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); top: -120px; left: -120px;
+    }
+    .hero::after {
+      content: ''; position: absolute;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); bottom: -80px; right: -80px;
+    }
+    .hero-text { text-align: center; color: #fff; z-index: 1; }
+    .hero-text .donate { font-size: 2rem; font-weight: 300; letter-spacing: .3em; }
+    .hero-text .blood  { font-size: 5rem; font-weight: 900; letter-spacing: .1em; line-height: 1; }
+    .hero-text .save   { font-size: 1.5rem; font-weight: 300; letter-spacing: .3em; margin-top: .5rem; }
+    .blood-drop { margin-top: 2.5rem; z-index: 1; }
+    .blood-drop svg { width: 120px; height: 120px; }
+    .gold-bar {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 18px;
+      background: linear-gradient(180deg, #f0c040, #c8960c);
+    }
+
+    /* Right panel */
+    .login-panel {
+      width: 440px; min-width: 320px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1.5rem;
+      background: #fff;
+    }
+    .login-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      padding: 2.5rem 2rem; width: 100%;
+    }
+
+    .back-btn {
+      background: none; border: none; color: #c0392b;
+      font-size: .88rem; font-weight: 600; cursor: pointer;
+      padding: 0; margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .3rem;
+    }
+    .back-btn:hover { text-decoration: underline; }
+
+    .form-title {
+      text-align: center; font-size: 1.2rem; font-weight: 700;
+      color: #1a1a2e; margin-bottom: 1.5rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block; font-size: .85rem; font-weight: 600;
+      color: #444; margin-bottom: .35rem;
+    }
+    .form-group input {
+      width: 100%; padding: .55rem .75rem;
+      border: 1px solid #ccc; border-radius: 6px;
+      font-size: .9rem; background: #fafafa; outline: none;
+      transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: #c0392b; background: #fff; }
+
+    .btn-submit {
+      width: 100%; padding: .7rem;
+      background: #2980b9;
+      color: #fff; border: none; border-radius: 50px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      margin-top: .5rem;
+      box-shadow: 0 4px 14px rgba(41,128,185,.3);
+      transition: opacity .2s;
+    }
+    .btn-submit:hover    { background: #1f6391; }
+    .btn-submit:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
+
+    .alert { display: none; padding: .65rem .9rem; border-radius: 6px; font-size: .85rem; margin-bottom: 1rem; }
+    .alert.show { display: block; }
+    .alert-error   { background: #fde8e8; color: #c0392b; border: 1px solid #f5c6cb; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    .staff-note {
+      text-align: center; color: #888; font-size: .82rem;
+      margin-top: .75rem; display: none;
+    }
+
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      .hero { min-height: 200px; padding: 2rem 1rem; }
+      .hero-text .blood { font-size: 3rem; }
+      .gold-bar { display: none; }
+      .login-panel { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-text">
+    <div class="donate">DONATE</div>
+    <div class="blood">BLOOD</div>
+    <div class="save">SAVE LIFE</div>
+  </div>
+  <div class="blood-drop">
+    <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 5 C50 5 10 55 10 75 A40 40 0 0 0 90 75 C90 55 50 5 50 5Z" fill="white" opacity="0.95"/>
+      <path d="M50 80 C50 80 30 65 30 55 A10 10 0 0 1 50 52 A10 10 0 0 1 70 55 C70 65 50 80 50 80Z" fill="#c0392b"/>
+      <polyline points="32,60 38,60 41,50 44,70 47,55 50,60 53,60 56,52 59,68 62,60 68,60"
+                stroke="#c0392b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="gold-bar"></div>
+</div>
+
+<div class="login-panel">
+  <div class="login-card">
+    <button class="back-btn" onclick="window.location.href='index.html'">&#8592; Back</button>
+    <p class="form-title">Staff Login</p>
+
+    <div id="alert" class="alert" role="alert"></div>
+
+    <form id="staffForm" novalidate>
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" autocomplete="username"
+               placeholder="Enter your username" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" autocomplete="current-password"
+               placeholder="Enter your password" required />
+      </div>
+      <button type="submit" class="btn-submit" id="staffSignInBtn">Login</button>
+      <p class="staff-note" id="staffSignUpNote">
+        New staff accounts are created by an Administrator.
+      </p>
+      <p style="text-align:center;margin-top:.85rem;font-size:.85rem;">
+        <a href="reset_password.html?type=staff" style="color:#2980b9;text-decoration:none;font-weight:600;">Forgot Password?</a>
+      </p>
+    </form>
+  </div>
+</div>
+
+<script>
+  const alertBox = document.getElementById('alert');
+
+  function isFirstTime() { return !localStorage.getItem('hasLoggedIn_staff'); }
+  function markLoggedIn() { localStorage.setItem('hasLoggedIn_staff', '1'); }
+
+  function updateBtn() {
+    const first = isFirstTime();
+    document.getElementById('staffSignInBtn').style.display  = first ? 'none' : '';
+    document.getElementById('staffSignUpNote').style.display = first ? 'block' : 'none';
+  }
+  updateBtn();
+
+  function showAlert(msg, type) {
+    alertBox.textContent = msg;
+    alertBox.className   = 'alert show alert-' + type;
+  }
+
+  document.getElementById('staffForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    alertBox.className = 'alert';
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username || !password) { showAlert('Please enter both username and password.', 'error'); return; }
+
+    const btn = document.getElementById('staffSignInBtn');
+    btn.disabled = true; btn.textContent = 'Please wait…';
+
+    try {
+      const res  = await fetch('api/auth.php', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        markLoggedIn();
+        sessionStorage.setItem('staff_id', data.staff_id);
+        sessionStorage.setItem('role',     data.role);
+        sessionStorage.setItem('staff_code', data.staff_code || '');
+        const role = data.role;
+        if      (role === 'Administrator')  window.location.href = 'admin_dashboard.html';
+        else if (role === 'Lab_Technician') window.location.href = 'lab_dashboard.html';
+        else if (role === 'Doctor')         window.location.href = 'doctor_dashboard.html';
+        else showAlert('Login failed: account has no role assigned. Contact an administrator.', 'error');
+      } else {
+        showAlert(data.error || 'Login failed. Please check your credentials.', 'error');
+      }
+    } catch { showAlert('Network error. Please check your connection.', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Login'; updateBtn(); }
+  });
+</script>
+
+</body>
+</html>

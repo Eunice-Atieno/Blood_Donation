@@ -1,0 +1,13 @@
+Options -Indexes
+DirectoryIndex index.html index.php
+
+# Ensure PHP files in api/ are served correctly
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# Prevent direct access to config files
+<FilesMatch "^(db\.php|db\.example\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
