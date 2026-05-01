@@ -86,6 +86,13 @@ function handlePost(): void
         exit;
     }
 
+    // Validate email format
+    if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'Invalid email address format.']);
+        exit;
+    }
+
     $passwordHash = !empty($data['password'])
         ? password_hash($data['password'], PASSWORD_BCRYPT)
         : null;

@@ -360,7 +360,14 @@ if (!donorId) { window.location.href = 'index.html'; }
 
 // ── Always send session cookie with every API request ─────────────────────────
 const _fetch = window.fetch;
-window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+window.fetch = async (url, opts = {}) => {
+  const res = await _fetch(url, { credentials: 'include', ...opts });
+  if (res.status === 401 && !url.includes('donor_auth.php')) {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+  return res;
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function esc(s) {

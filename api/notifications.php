@@ -157,24 +157,27 @@ if ($method === 'POST') {
             $notifId = (int) $pdo->lastInsertId();
 
             // Attempt to send the email
-            $emailStatus = 'sent';
+            $emailStatus = 'failed'; // default to failed
             $emailNote   = null;
 
             if (!empty($staff['email'])) {
-                $result = $service->sendStaffNotification($staff['email'], $staff['username'], $message);
-                if (!$result['success']) {
-                    // Email failed — record the failure but don't crash
-                    $emailStatus = 'failed';
-                    $emailNote   = $result['error'] ?? 'Email delivery failed';
-                    error_log('Staff notification email failed: ' . $emailNote);
+                try {
+                    $result = $service->sendStaffNotification($staff['email'], $staff['username'], $message);
+                    if ($result['success']) {
+                        $emailStatus = 'sent';
+                    } else {
+                        $emailNote = $result['error'] ?? 'Email delivery failed';
+                        error_log('Staff notification email failed: ' . $emailNote);
+                    }
+                } catch (\Throwable $e) {
+                    $emailNote = $e->getMessage();
+                    error_log('Staff notification exception: ' . $emailNote);
                 }
             } else {
-                // Staff has no email address configured
-                $emailStatus = 'failed';
-                $emailNote   = 'Staff member has no email address on file';
+                $emailNote = 'Staff member has no email address on file';
             }
 
-            // Update the notification record with the actual delivery status
+            // Always update — never leave as pending
             $pdo->prepare('UPDATE staff_notifications SET delivery_status = :s WHERE id = :id')
                 ->execute([':s' => $emailStatus, ':id' => $notifId]);
 
@@ -215,17 +218,23 @@ if ($method === 'POST') {
             $notifId = (int) $pdo->lastInsertId();
 
             // Attempt to send the email — soft failure (won't crash if email fails)
-            $emailStatus = 'sent';
+            $emailStatus = 'failed'; // default to failed; only set to sent on success
             $emailNote   = null;
 
-            $result = $service->sendDonorNotification($donorId, $messageType);
-            if (!$result['success']) {
-                $emailStatus = 'failed';
-                $emailNote   = $result['error'] ?? 'Email delivery failed';
-                error_log('Donor notification email failed: ' . $emailNote);
+            try {
+                $result = $service->sendDonorNotification($donorId, $messageType);
+                if ($result['success']) {
+                    $emailStatus = 'sent';
+                } else {
+                    $emailNote = $result['error'] ?? 'Email delivery failed';
+                    error_log('Donor notification email failed: ' . $emailNote);
+                }
+            } catch (\Throwable $e) {
+                $emailNote = $e->getMessage();
+                error_log('Donor notification exception: ' . $emailNote);
             }
 
-            // Update the notification record with the actual delivery status
+            // Always update the notification record — never leave it as pending
             $pdo->prepare('UPDATE notifications SET delivery_status = :s WHERE id = :id')
                 ->execute([':s' => $emailStatus, ':id' => $notifId]);
 

@@ -226,3 +226,11 @@ CREATE TABLE IF NOT EXISTS staff_notifications (
         FOREIGN KEY (staff_id) REFERENCES staff (id)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------
+-- Initial Admin Account (run setup_admin.php instead,
+-- or insert manually with a bcrypt-hashed password)
+-- -------------------------------------------------------
+-- Example (replace the hash with a real bcrypt hash):
+-- INSERT IGNORE INTO staff (username, password_hash, role, email)
+-- VALUES ('admin', '$2y$10$REPLACE_WITH_REAL_HASH', 'Administrator', 'admin@knh.go.ke');

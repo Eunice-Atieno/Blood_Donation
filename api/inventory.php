@@ -44,10 +44,27 @@ function handleGet(): void
     Auth::requireRole(['Administrator', 'Lab_Technician', 'Doctor']);
 
     try {
+        $pdo     = getDbConnection();
         $manager = new InventoryManager();
 
-        // Auto-expire stale units on every inventory fetch so counts are always current
+        // Auto-expire stale units
         $manager->expireUnits();
+
+        // Recalculate inventory counts for ALL blood types to ensure cache is in sync
+        $bloodTypes = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+        foreach ($bloodTypes as $bt) {
+            // Get any unit of this type to pass to updateInventory (it only needs the type)
+            $s = $pdo->prepare('SELECT id FROM blood_units WHERE blood_type = ? LIMIT 1');
+            $s->execute([$bt]);
+            $row = $s->fetch();
+            if ($row) {
+                $manager->updateInventory((int) $row['id']);
+            } else {
+                // No units of this type — ensure count is 0
+                $pdo->prepare('UPDATE blood_inventory SET unit_count = 0, low_stock = 1 WHERE blood_type = ?')
+                    ->execute([$bt]);
+            }
+        }
 
         $inventory = $manager->getInventory();
 

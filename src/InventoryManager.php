@@ -117,20 +117,39 @@ class InventoryManager
 
     /**
      * Return the current inventory for all blood types.
-     *
-     * Each element: ['blood_type' => string, 'unit_count' => int, 'low_stock' => bool]
-     *
-     * Requirements: 6.1, 6.4
+     * Always recalculates live from blood_units to ensure accuracy,
+     * then syncs the blood_inventory cache.
      */
     public function getInventory(): array
     {
         $pdo = getDbConnection();
+        $threshold = (int) ($_ENV['LOW_STOCK_THRESHOLD'] ?? 10);
 
-        $stmt = $pdo->query(
-            'SELECT blood_type, unit_count, low_stock FROM blood_inventory'
-        );
+        // Recalculate live counts from blood_units for all 8 blood types
+        $bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+        $results    = [];
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($bloodTypes as $bt) {
+            $stmt = $pdo->prepare(
+                "SELECT COUNT(*) AS cnt FROM blood_units WHERE blood_type = ? AND status = 'available'"
+            );
+            $stmt->execute([$bt]);
+            $count    = (int) $stmt->fetchColumn();
+            $lowStock = ($count < $threshold) ? 1 : 0;
+
+            // Sync the cache
+            $pdo->prepare(
+                'UPDATE blood_inventory SET unit_count = :c, low_stock = :l WHERE blood_type = :bt'
+            )->execute([':c' => $count, ':l' => $lowStock, ':bt' => $bt]);
+
+            $results[] = [
+                'blood_type' => $bt,
+                'unit_count' => $count,
+                'low_stock'  => $lowStock,
+            ];
+        }
+
+        return $results;
     }
 
     /**

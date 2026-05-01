@@ -118,7 +118,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="wfName">Full Name <span style="color:red">*</span></label>
-              <input type="text" id="wfName" placeholder="e.g. Jane Doe" />
+              <input type="text" id="wfName" placeholder="e.g. Kelly Stacy" />
             </div>
             <div class="form-group">
               <label for="wfDob">Date of Birth <span style="color:red">*</span></label>
@@ -138,7 +138,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="wfEmail">Email</label>
-              <input type="email" id="wfEmail" placeholder="optional" />
+              <input type="email" id="wfEmail" placeholder="kelly@gmail.com" />
             </div>
             <div class="form-group">
               <label for="wfBloodType">Blood Type (if known)</label>
@@ -523,8 +523,16 @@
 
 <script>
 // ── Always send session cookie with every API request ─────────────────────────
+// ── Always send session cookie with every API request ─────────────────────────
 const _fetch = window.fetch;
-window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+window.fetch = async (url, opts = {}) => {
+  const res = await _fetch(url, { credentials: 'include', ...opts });
+  if (res.status === 401 && !url.includes('auth.php')) {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+  return res;
+};
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 if (!sessionStorage.getItem('staff_id')) { window.location.href = 'index.html'; }
@@ -789,8 +797,14 @@ async function loadOverview() {
     const units     = await unitsRes.json();
 
     document.getElementById('statDonors').textContent = Array.isArray(donors) ? donors.length : '—';
+
+    // Use blood_inventory.unit_count (same source as admin dashboard) for consistency
+    const totalAvailable = Array.isArray(inventory)
+      ? inventory.reduce((s, r) => s + parseInt(r.unit_count || 0), 0) : 0;
+    document.getElementById('statAvailable').textContent = totalAvailable;
+
+    // Expiring soon — still use blood_units for accurate expiry dates
     const available = Array.isArray(units) ? units.filter(u => u.status === 'available') : [];
-    document.getElementById('statAvailable').textContent = available.length;
     const soon = new Date(Date.now() + 7*86400000);
     const expiring = available.filter(u => { const d=new Date(u.expiry_date); return d>=new Date()&&d<=soon; });
     document.getElementById('statExpiring').textContent = expiring.length;

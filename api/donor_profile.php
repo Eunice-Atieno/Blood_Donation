@@ -103,6 +103,12 @@ if ($method === 'PUT') {
             exit;
         }
 
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Invalid email address format.']);
+            exit;
+        }
+
         // Password change (optional)
         $newHash = null;
         if (!empty($body['new_password'])) {

@@ -226,8 +226,27 @@ if ($method === 'PUT') {
             ':donor_id' => $donorId,
         ]);
 
-        echo json_encode(['message' => 'appointment rescheduled']);
-    } catch (\PDOException $e) {
+        // Send rescheduled notification to donor and lab techs BEFORE response
+        try {
+            if (!class_exists('NotificationService')) {
+                require_once __DIR__ . '/../src/NotificationService.php';
+            }
+            $donorStmt = $pdo->prepare('SELECT name, email FROM donors WHERE id = ? LIMIT 1');
+            $donorStmt->execute([$donorId]);
+            $donor = $donorStmt->fetch();
+            if ($donor) {
+                $notif = new NotificationService();
+                if (!empty($donor['email'])) {
+                    $notif->sendAppointmentRescheduled($donor['email'], $donor['name'], $date, $time, $notes);
+                }
+                // Notify lab techs of the reschedule
+                $notif->notifyLabTechsOfAppointment($donor['name'], $date, $time, $notes ?: '');
+            }
+        } catch (\Throwable $e) {
+            error_log('Reschedule notification failed: ' . $e->getMessage());
+        }
+
+        echo json_encode(['message' => 'appointment rescheduled']);    } catch (\PDOException $e) {
         error_log('appointments PUT error: ' . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'internal server error']);

@@ -302,7 +302,14 @@
 <script>
 // ── Always send session cookie with every API request ─────────────────────────
 const _fetch = window.fetch;
-window.fetch = (url, opts = {}) => _fetch(url, { credentials: 'include', ...opts });
+window.fetch = async (url, opts = {}) => {
+  const res = await _fetch(url, { credentials: 'include', ...opts });
+  if (res.status === 401 && !url.includes('auth.php')) {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+  return res;
+};
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 if (!sessionStorage.getItem('staff_id')) { window.location.href = 'index.html'; }

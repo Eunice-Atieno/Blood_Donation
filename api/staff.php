@@ -73,6 +73,13 @@ if ($method === 'POST') {
         exit;
     }
 
+    // Validate email format if provided
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'Invalid email address format.']);
+        exit;
+    }
+
     if (strlen($password) < 8) {
         http_response_code(422);
         echo json_encode(['error' => 'password must be at least 8 characters']);
@@ -93,7 +100,25 @@ if ($method === 'POST') {
             ':e' => $email !== '' ? $email : null,
         ]);
         http_response_code(201);
-        echo json_encode(['id' => (int) $pdo->lastInsertId()]);
+        $newId = (int) $pdo->lastInsertId();
+
+        // Send account creation notification email BEFORE sending response
+        if ($email !== '') {
+            try {
+                if (!class_exists('NotificationService')) {
+                    require_once __DIR__ . '/../src/NotificationService.php';
+                }
+                $notif = new NotificationService();
+                $result = $notif->sendStaffAccountCreated($email, $username, $role, $username);
+                if (!$result['success']) {
+                    error_log('Staff welcome email failed: ' . ($result['error'] ?? 'unknown'));
+                }
+            } catch (\Throwable $e) {
+                error_log('Staff welcome email exception: ' . $e->getMessage());
+            }
+        }
+
+        echo json_encode(['id' => $newId]);
     } catch (\PDOException $e) {
         if ($e->getCode() === '23000') {
             http_response_code(409);
@@ -123,6 +148,11 @@ if ($method === 'PUT') {
     }
     if (isset($body['email'])) {
         $e = trim($body['email']);
+        if ($e !== '' && !filter_var($e, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Invalid email address format.']);
+            exit;
+        }
         $sets[] = 'email = :email'; $params[':email'] = $e !== '' ? $e : null;
     }
     if (isset($body['locked'])) {
@@ -173,6 +203,23 @@ if ($method === 'DELETE') {
         $pdo = getDbConnection();
 
         if ($action === 'delete') {
+            // Remove linked records before deleting the staff account
+            // 1. Null out lab_results.tested_by (set to NULL to preserve test records)
+            try {
+                $pdo->exec("ALTER TABLE lab_results MODIFY COLUMN tested_by INT NULL");
+            } catch (\PDOException $ignored) {}
+            $pdo->prepare('UPDATE lab_results SET tested_by = NULL WHERE tested_by = :id')->execute([':id' => $id]);
+
+            // 2. Remove blood requests made by this staff member
+            $pdo->prepare('DELETE FROM blood_requests WHERE requested_by = :id')->execute([':id' => $id]);
+
+            // 3. Remove transfusions recorded by this staff member
+            $pdo->prepare('DELETE FROM transfusions WHERE staff_id = :id')->execute([':id' => $id]);
+
+            // 4. Remove staff notifications
+            $pdo->prepare('DELETE FROM staff_notifications WHERE staff_id = :id')->execute([':id' => $id]);
+
+            // 5. Delete the staff account
             $pdo->prepare('DELETE FROM staff WHERE id = :id')->execute([':id' => $id]);
             echo json_encode(['message' => 'account deleted']);
         } else {
@@ -182,7 +229,7 @@ if ($method === 'DELETE') {
     } catch (\PDOException $e) {
         error_log('staff DELETE: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'internal server error']);
+        echo json_encode(['error' => 'Delete failed: ' . $e->getMessage()]);
     }
     exit;
 }
